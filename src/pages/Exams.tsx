@@ -202,14 +202,9 @@ export const Exams: React.FC = () => {
   }
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Exams Timetable</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.1rem' }}>Track test dates, locations, and preparation milestones.</p>
-        </div>
-        
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
         <button className="btn-primary" onClick={() => setShowModal(true)}>
           <Plus size={18} />
           Add Exam

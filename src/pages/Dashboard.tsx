@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth, API_BASE_URL } from '../context/AuthContext';
-import { Calendar, Clock, MapPin, Heart, GraduationCap, ClipboardList } from 'lucide-react';
+import { MapPin, ClipboardList, Clock, Calendar, BookOpen } from 'lucide-react';
 
 interface ClassToday {
   id: string;
@@ -39,98 +39,156 @@ interface Exam {
   subject_color: string;
 }
 
+interface AttendanceStat {
+  id: string;
+  name: string;
+  code: string;
+  color: string;
+  targetAttendance: number;
+  currentPercentage: number;
+  status: 'safe' | 'danger';
+}
+
 interface DashboardData {
   classesToday: ClassToday[];
   upcomingAssignments: Assignment[];
   nextExam: Exam | null;
+  upcomingExams?: Exam[];
+  recentNotes?: {
+    id: string;
+    title: string;
+    file_name: string;
+    subject_name: string;
+    subject_code: string;
+    subject_color: string;
+  }[];
   stats: {
     averageAttendance: number;
     totalPendingAssignments: number;
     totalSubjects: number;
+    totalNotesSaved?: number;
   };
 }
 
-// Custom Cute SVGs for cutesy pinterest design
-const WelcomeCloud: React.FC = () => (
-  <svg viewBox="0 0 120 100" width="110" height="90" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.05))' }}>
-    {/* Cloud Body */}
-    <path 
-      d="M25,65 C18,65 12,59 12,52 C12,46 17,40 23,39 C24,24 37,12 52,12 C64,12 74,19 78,30 C80,26 84,24 88,24 C96,24 102,30 102,38 C102,40 101,42 100,43 C105,46 108,51 108,57 C108,63 103,68 97,68 L25,68 Z" 
-      fill="#dbeafe" 
-    />
-    <path 
-      d="M25,60 C20,60 16,56 16,51 C16,46 20,41 25,40 C27,27 38,16 52,16 C63,16 72,23 75,33 C78,30 82,28 86,28 C93,28 98,33 98,40 C98,41 97,43 96,44 C100,47 103,52 103,57 C103,62 98,66 93,66 L25,66 Z" 
-      fill="#e0e7ff" 
-    />
-    <path 
-      d="M28,62 C24,62 21,59 21,55 C21,51 24,47 28,47 C29,35 39,25 52,25 C62,25 70,32 73,41 C75,38 78,36 82,36 C88,36 93,41 93,47 C93,48 92,49 92,50 C96,52 98,56 98,60 C98,64 94,67 89,67 L28,67 Z" 
-      fill="#eef2ff" 
-    />
-    {/* Bow 🎀 */}
-    <path d="M78,28 C76,26 73,26 73,28 C73,30 75,32 78,30" fill="#f472b6" />
-    <path d="M83,28 C85,26 88,26 88,28 C88,30 86,32 83,30" fill="#f472b6" />
-    <circle cx="80.5" cy="29" r="2.5" fill="#db2777" />
-    {/* Eyes */}
-    <circle cx="43" cy="45" r="2" fill="#312e81" />
-    <circle cx="61" cy="45" r="2" fill="#312e81" />
-    {/* Rosy Cheeks */}
-    <circle cx="39" cy="48" r="3.5" fill="#fca5a5" opacity="0.6" />
-    <circle cx="65" cy="48" r="3.5" fill="#fca5a5" opacity="0.6" />
-    {/* Smile */}
-    <path d="M50,47 Q52,49 54,47" stroke="#312e81" strokeWidth="1.5" strokeLinecap="round" fill="transparent" />
-    {/* Cup in hands */}
-    <rect x="47" y="52" width="10" height="9" rx="2" fill="#fbcfe8" />
-    <path d="M57,54 C59,54 60,55 60,56 C60,57 59,58 57,58" stroke="#db2777" strokeWidth="1" fill="transparent" />
+
+
+const CozyDeskIllustration: React.FC = () => (
+  <svg viewBox="0 0 260 80" width="240" height="75" style={{ overflow: 'visible' }}>
+    {/* Lamp Glow */}
+    <path d="M190,45 L150,80 L230,80 Z" fill="rgba(254, 240, 138, 0.25)" filter="blur(4px)" />
+    {/* Books */}
+    <rect x="30" y="55" width="40" height="8" rx="2" fill="#d8b4fe" />
+    <rect x="32" y="63" width="36" height="8" rx="2" fill="#fbcfe8" />
+    <line x1="30" y1="59" x2="70" y2="59" stroke="#b085db" strokeWidth="1" />
+    <line x1="32" y1="67" x2="68" y2="67" stroke="#e0a3c2" strokeWidth="1" />
+    {/* Mug next to bear */}
+    <rect x="80" y="56" width="10" height="12" rx="2" fill="#fda4af" />
+    <path d="M90,59 C92,59 93,60 93,62 C93,64 92,65 90,65" stroke="#f43f5e" strokeWidth="1.2" fill="transparent" />
+    <path d="M82,53 Q85,50 83,47" stroke="#fca5a5" strokeWidth="1" strokeLinecap="round" fill="transparent" opacity="0.8" />
+    {/* Bear sitting */}
+    <circle cx="120" cy="50" r="18" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1" />
+    <circle cx="108" cy="36" r="5" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1" />
+    <circle cx="132" cy="36" r="5" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1" />
+    {/* Inner ears */}
+    <circle cx="108" cy="36" r="2.5" fill="#fbcfe8" />
+    <circle cx="132" cy="36" r="2.5" fill="#fbcfe8" />
+    {/* Eyes closed/happy */}
+    <path d="M112,46 Q115,48 117,46" stroke="#475569" strokeWidth="1.5" strokeLinecap="round" fill="transparent" />
+    <path d="M123,46 Q125,48 128,46" stroke="#475569" strokeWidth="1.5" strokeLinecap="round" fill="transparent" />
+    {/* Nose / Mouth */}
+    <ellipse cx="120" cy="50" rx="3" ry="2" fill="#94a3b8" />
+    <path d="M120,52 Q120,54 118,54" stroke="#475569" strokeWidth="1" strokeLinecap="round" fill="transparent" />
+    <path d="M120,52 Q120,54 122,54" stroke="#475569" strokeWidth="1" strokeLinecap="round" fill="transparent" />
+    {/* Blush */}
+    <circle cx="111" cy="50" r="2.5" fill="#fda4af" opacity="0.6" />
+    <circle cx="129" cy="50" r="2.5" fill="#fda4af" opacity="0.6" />
+    {/* Bear hands holding cup */}
+    <circle cx="114" cy="58" r="3.5" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1" />
+    <circle cx="126" cy="58" r="3.5" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1" />
+    {/* Desk Lamp */}
+    <rect x="180" y="70" width="20" height="4" fill="#cbd5e1" />
+    <path d="M190,70 L190,40" stroke="#f472b6" strokeWidth="3" strokeLinecap="round" />
+    <path d="M190,40 Q180,30 170,42" stroke="#f472b6" strokeWidth="3" strokeLinecap="round" fill="transparent" />
+    <path d="M165,40 C165,34 178,34 178,40 Z" fill="#fda4af" />
+    {/* Sparkles */}
+    <path d="M15,20 L17,23 L20,24 L17,25 L15,28 L13,25 L10,24 L13,23 Z" fill="#fef08a" />
+    <path d="M220,15 L222,18 L225,19 L222,20 L220,23 L218,20 L215,19 L218,18 Z" fill="#fbcfe8" />
+    <path d="M155,10 L156.5,12 L159,12.5 L156.5,13 L155,15 L153.5,13 L151,12.5 L153.5,12 Z" fill="#c084fc" opacity="0.7" />
   </svg>
 );
 
-const SleepingCloud: React.FC = () => (
-  <svg viewBox="0 0 120 90" width="100" height="75" style={{ margin: '0 auto', display: 'block' }}>
-    <path 
-      d="M25,60 C18,60 12,54 12,47 C12,41 17,35 23,34 C24,19 37,7 52,7 C64,7 74,14 78,25 C80,21 84,19 88,19 C96,19 102,25 102,33 C102,35 101,37 100,38 C105,41 108,46 108,52 C108,58 103,63 97,63 L25,63 Z" 
-      fill="#eff6ff" 
-    />
-    <path 
-      d="M28,58 C24,58 21,55 21,51 C21,47 24,43 28,43 C29,31 39,21 52,21 C62,21 70,28 73,37 C75,34 78,32 82,32 C88,32 93,37 93,43 C93,44 92,45 92,46 C96,48 98,52 98,56 C98,60 94,63 89,63 L28,63 Z" 
-      fill="#f8fafc" 
-    />
-    {/* Eyes closed (Zzz sleeping) */}
-    <path d="M42,43 Q45,46 48,43" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" fill="transparent" />
-    <path d="M58,43 Q61,46 64,43" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" fill="transparent" />
-    <circle cx="39" cy="46" r="2.5" fill="#fecdd3" opacity="0.6" />
-    <circle cx="67" cy="46" r="2.5" fill="#fecdd3" opacity="0.6" />
-    {/* Zzz text bubbles */}
-    <text x="80" y="24" fill="#a78bfa" fontSize="10" fontWeight="bold">Z</text>
-    <text x="88" y="16" fill="#c084fc" fontSize="12" fontWeight="bold">z</text>
-    <text x="96" y="8" fill="#e9d5ff" fontSize="14" fontWeight="bold">z</text>
+const CuteExamsCalendar: React.FC = () => (
+  <svg viewBox="0 0 120 90" width="100" height="75" style={{ margin: '0 auto', display: 'block', overflow: 'visible' }}>
+    {/* Calendar base shadow */}
+    <rect x="25" y="23" width="54" height="46" rx="6" fill="#fecdd3" opacity="0.4" />
+    {/* Calendar body */}
+    <rect x="22" y="20" width="54" height="46" rx="6" fill="#ffffff" stroke="#fda4af" strokeWidth="1.5" />
+    {/* Header pink banner */}
+    <rect x="22" y="20" width="54" height="12" rx="0" fill="#fbcfe8" />
+    <path d="M22,26 L76,26" stroke="#fda4af" strokeWidth="1.5" />
+    {/* Binder Rings */}
+    <rect x="30" y="14" width="4" height="10" rx="2" fill="#cbd5e1" />
+    <rect x="47" y="14" width="4" height="10" rx="2" fill="#cbd5e1" />
+    <rect x="64" y="14" width="4" height="10" rx="2" fill="#cbd5e1" />
+    {/* Cute blushing calendar face */}
+    <path d="M38,40 Q40,42 42,40" stroke="#ff4d6d" strokeWidth="1.5" strokeLinecap="round" fill="transparent" />
+    <path d="M54,40 Q56,42 58,40" stroke="#ff4d6d" strokeWidth="1.5" strokeLinecap="round" fill="transparent" />
+    <circle cx="36" cy="43" r="2.5" fill="#ffd1dc" />
+    <circle cx="60" cy="43" r="2.5" fill="#ffd1dc" />
+    <path d="M46,47 Q48,50 50,47" stroke="#ff4d6d" strokeWidth="1.2" strokeLinecap="round" fill="transparent" />
+    {/* Small Ribbon/Heart */}
+    <path d="M82,42 C82,39 79,37 77,39 C75,37 72,39 72,42 C72,46 77,49 77,49 C77,49 82,46 82,42" fill="#f472b6" />
   </svg>
 );
 
-const CuteClipboard: React.FC = () => (
-  <svg viewBox="0 0 100 100" width="80" height="80" style={{ margin: '0 auto', display: 'block' }}>
-    {/* Board */}
-    <rect x="25" y="22" width="50" height="64" rx="6" fill="#e0e7ff" stroke="#a5b4fc" strokeWidth="1.5" />
-    <rect x="29" y="26" width="42" height="56" rx="4" fill="#ffffff" />
-    {/* Header Clip */}
-    <rect x="40" y="14" width="20" height="10" rx="3" fill="#cbd5e1" />
-    <circle cx="50" cy="19" r="2" fill="#94a3b8" />
-    {/* Checklist lines */}
-    <line x1="36" y1="38" x2="64" y2="38" stroke="#f1f5f9" strokeWidth="3" strokeLinecap="round" />
-    <line x1="36" y1="48" x2="64" y2="48" stroke="#f1f5f9" strokeWidth="3" strokeLinecap="round" />
-    <line x1="36" y1="58" x2="64" y2="58" stroke="#f1f5f9" strokeWidth="3" strokeLinecap="round" />
-    {/* Big Pink Checkmark */}
-    <path d="M42,54 L48,60 L62,44" stroke="#ff5e84" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="transparent" />
-    {/* Sparkles ✦ */}
-    <path d="M22,30 L24,34 L28,35 L24,36 L22,40 L20,36 L16,35 L20,34 Z" fill="#fef08a" />
-    <path d="M78,60 L80,63 L83,64 L80,65 L78,68 L76,65 L73,64 L76,63 Z" fill="#fbcfe8" />
+const CuteDaisyFlower: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 16, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" style={{ overflow: 'visible', ...style }}>
+    <circle cx="12" cy="7" r="4.5" fill="#ffd1dc" />
+    <circle cx="7" cy="12" r="4.5" fill="#ffd1dc" />
+    <circle cx="17" cy="12" r="4.5" fill="#ffd1dc" />
+    <circle cx="9.5" cy="17" r="4.5" fill="#ffd1dc" />
+    <circle cx="14.5" cy="17" r="4.5" fill="#ffd1dc" />
+    <circle cx="12" cy="12" r="3.5" fill="#fef08a" />
   </svg>
 );
+
+const CuteMiniStar: React.FC<{ size?: number; color?: string; style?: React.CSSProperties }> = ({ size = 12, color = '#fef08a', style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" style={{ overflow: 'visible', ...style }}>
+    <path d="M12,0 L15,9 L24,12 L15,15 L12,24 L9,15 L0,12 L9,9 Z" fill={color} />
+  </svg>
+);
+
+const PlannerBinderSpirals: React.FC = () => (
+  <div style={{
+    position: 'absolute',
+    left: '-24px',
+    top: '30px',
+    bottom: '30px',
+    width: '18px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    zIndex: 99,
+    pointerEvents: 'none'
+  }}>
+    {Array.from({ length: 9 }).map((_, i) => (
+      <svg key={i} width="20" height="10" viewBox="0 0 20 10" style={{ overflow: 'visible' }}>
+        <path d="M0,5 C0,1 20,1 20,5 C20,9 0,9 0,5" fill="none" stroke="var(--primary)" strokeWidth="1.8" opacity="0.3" />
+        <path d="M2,5 C2,2 18,2 18,5 C18,8 2,8 2,5" fill="none" stroke="#e2e8f0" strokeWidth="1.2" />
+      </svg>
+    ))}
+  </div>
+);
+
 
 export const Dashboard: React.FC = () => {
   const { user, token } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
+  const [attendanceStats, setAttendanceStats] = useState<AttendanceStat[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [greeting, setGreeting] = useState<string>('Welcome back');
 
   const fetchDashboardData = async () => {
     try {
@@ -138,18 +196,30 @@ export const Dashboard: React.FC = () => {
       const dayOfWeek = today.getDay(); 
       const dateStr = today.toISOString().split('T')[0];
 
-      const res = await fetch(`${API_BASE_URL}/dashboard?dayOfWeek=${dayOfWeek}&date=${dateStr}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const [dashRes, attRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/dashboard?dayOfWeek=${dayOfWeek}&date=${dateStr}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }),
+        fetch(`${API_BASE_URL}/academic/attendance/stats`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+      ]);
 
-      if (!res.ok) {
+      if (!dashRes.ok) {
         throw new Error('Failed to fetch dashboard summaries.');
       }
 
-      const resData = await res.json();
+      const resData = await dashRes.json();
       setData(resData);
+
+      if (attRes.ok) {
+        const attData = await attRes.json();
+        setAttendanceStats(attData);
+      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Error loading dashboard.');
@@ -161,6 +231,16 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     if (token) {
       fetchDashboardData();
+    }
+    
+    // Greeting logic based on client time
+    const hours = new Date().getHours();
+    if (hours >= 5 && hours < 12) {
+      setGreeting('Good morning');
+    } else if (hours >= 12 && hours < 17) {
+      setGreeting('Good afternoon');
+    } else {
+      setGreeting('Good evening');
     }
   }, [token]);
 
@@ -183,8 +263,6 @@ export const Dashboard: React.FC = () => {
       console.error('Error completing task:', err);
     }
   };
-
-
 
   // Helper: check if class is happening now
   const isClassActiveNow = (startTime: string, endTime: string, dayOfWeek: number) => {
@@ -218,6 +296,32 @@ export const Dashboard: React.FC = () => {
     return target.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
 
+  const isOverdue = (dateStr: string, status: string) => {
+    if (status !== 'pending') return false;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const due = new Date(dateStr);
+    due.setHours(0,0,0,0);
+    return due.getTime() < today.getTime();
+  };
+
+  const getDaysRemaining = (dateStr: string) => {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const target = new Date(dateStr);
+    target.setHours(0,0,0,0);
+    const diffTime = target.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const formatDaysRemaining = (dateStr: string) => {
+    const days = getDaysRemaining(dateStr);
+    if (days === 0) return 'Today';
+    if (days === 1) return '1d';
+    if (days < 0) return 'Passed';
+    return `${days}d`;
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
@@ -234,187 +338,649 @@ export const Dashboard: React.FC = () => {
     );
   }
 
+  // Reminders computations
+  const lowAttendanceSubjects = attendanceStats.filter(s => s.currentPercentage < s.targetAttendance);
+  const overdueTasks = data.upcomingAssignments.filter(item => isOverdue(item.due_date, item.status));
+  const nearExams = (data.upcomingExams || []).filter(e => {
+    const days = getDaysRemaining(e.date);
+    return days >= 0 && days <= 5;
+  });
+
+  const remindersList: string[] = [];
+  lowAttendanceSubjects.forEach(s => {
+    remindersList.push(`Attendance for ${s.name} is below target`);
+  });
+  overdueTasks.forEach(t => {
+    remindersList.push(`Lab report — ${t.title.toLowerCase()} is overdue`);
+  });
+  nearExams.forEach(e => {
+    const days = getDaysRemaining(e.date);
+    const dayStr = days === 0 ? 'today' : days === 1 ? 'in 1 day' : `in ${days} days`;
+    remindersList.push(`${e.subject_name} exam ${dayStr}`);
+  });
+
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', position: 'relative', paddingLeft: '0.6rem' }}>
       
-      {/* 1. WELCOME HERO BANNER */}
+      {/* Planner binder spiral effect down the left side */}
+      <PlannerBinderSpirals />
+
+      {/* 1. TOP HEADER WITH DECORATIVE DESK ILLUSTRATION */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', paddingBottom: '0.2rem', position: 'relative' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h2 style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              {greeting}, {user?.username} 🌙
+            </h2>
+            <CuteMiniStar size={16} style={{ animation: 'bounce 2.5s infinite', alignSelf: 'center', marginTop: '4px' }} />
+          </div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '0.25rem 0 0 0', fontWeight: 500 }}>
+            Here's your <span style={{ color: 'var(--primary)', fontWeight: 600 }}>cozy</span> academic overview for today!
+          </p>
+
+          {/* Inspirational Daily Focus Quote */}
+          <div style={{ 
+            marginTop: '0.6rem', 
+            fontSize: '0.74rem', 
+            color: 'var(--text-secondary)', 
+            fontStyle: 'italic', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.35rem',
+            background: 'var(--primary-glow)',
+            padding: '0.3rem 0.8rem',
+            borderRadius: '15px',
+            alignSelf: 'flex-start',
+            border: '1px solid rgba(255, 94, 132, 0.08)'
+          }}>
+            <span>✨</span>
+            <span style={{ fontWeight: 600 }}>Cozy reminder: "Small steady steps lead to beautiful changes. Be kind to yourself today."</span>
+            <CuteDaisyFlower size={10} style={{ marginLeft: '0.2rem' }} />
+          </div>
+        </div>
+        <div style={{ flexShrink: 0 }}>
+          <CozyDeskIllustration />
+        </div>
+      </div>
+
+      {/* 2. STATS OVERVIEW SINGLE ROW CARD */}
       <div 
         className="section-card" 
         style={{ 
-          background: 'linear-gradient(135deg, #fff0f3 0%, #fffbfd 100%)', 
-          border: '1px solid rgba(255, 94, 132, 0.08)',
-          boxShadow: 'var(--card-shadow)',
-          padding: '1.4rem 2rem',
-          position: 'relative',
-          overflow: 'hidden'
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(4, 1fr)', 
+          gap: 0, 
+          padding: 0, 
+          overflow: 'hidden',
+          borderRadius: '12px',
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-color)',
+          boxShadow: 'var(--card-shadow)'
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '2rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
-            <div style={{ background: '#ffd5de', color: '#ff4b72', padding: '0.8rem', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Heart size={22} fill="#ff4b72" />
-            </div>
-            <div>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>Welcome back, {user?.username}! 💖</h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.2rem', fontWeight: 500 }}>
-                Your average attendance is at <strong style={{ color: 'var(--success-text)' }}>{data.stats.averageAttendance}%</strong>. 
-                {data.stats.totalPendingAssignments > 0 
-                  ? ` You have ${data.stats.totalPendingAssignments} pending assignments due.` 
-                  : ' You are fully caught up with your assignments!'}
-              </p>
-            </div>
+        {/* Column 1: Tasks Pending */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '1rem 1.4rem', borderRight: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '10px', background: '#fff0f2', color: '#ff5e84', flexShrink: 0 }}>
+            <ClipboardList size={18} />
           </div>
-          {/* Cloud Illustration Right aligned */}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <WelcomeCloud />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', lineHeight: '1.1' }}>
+              {data.stats.totalPendingAssignments}
+            </span>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+              Tasks Pending
+            </span>
+            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '0.05rem' }}>
+              Keep it up!
+            </span>
+          </div>
+        </div>
+
+        {/* Column 2: Attendance */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '1rem 1.4rem', borderRight: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '10px', background: '#f5effc', color: '#b6a6ca', flexShrink: 0 }}>
+            <Clock size={18} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', lineHeight: '1.1' }}>
+              {data.stats.averageAttendance}%
+            </span>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+              Avg. Attendance
+            </span>
+            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '0.05rem' }}>
+              Keep going!
+            </span>
+          </div>
+        </div>
+
+        {/* Column 3: Next Exam */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '1rem 1.4rem', borderRight: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '10px', background: '#fff9e6', color: '#e6c15c', flexShrink: 0 }}>
+            <Calendar size={18} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', lineHeight: '1.1' }}>
+              {data.nextExam ? `${getDaysRemaining(data.nextExam.date)}` : '—'}
+            </span>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+              Days to Next Exam
+            </span>
+            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '0.05rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '110px' }}>
+              {data.nextExam ? data.nextExam.title : 'No upcoming exams'}
+            </span>
+          </div>
+        </div>
+
+        {/* Column 4: Notes Saved */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '1rem 1.4rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '10px', background: '#eefdf8', color: '#3ec9a5', flexShrink: 0 }}>
+            <BookOpen size={18} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', lineHeight: '1.1' }}>
+              {data.stats.totalNotesSaved || 0}
+            </span>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+              Notes Saved
+            </span>
+            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '0.05rem' }}>
+              Keep learning!
+            </span>
           </div>
         </div>
       </div>
 
-      {/* 2. STATISTIC SUMMARY CARDS */}
-      <div className="dashboard-grid">
-        {/* Attendance Stat */}
-        <div className="metric-card">
-          <div className="metric-left-block">
-            <div className="metric-icon" style={{ background: 'var(--success-glow)', color: 'var(--success-text)', border: '1px solid rgba(62, 201, 165, 0.2)' }}>
-              <GraduationCap size={20} />
+      {/* 3. MAIN DASHBOARD CONTENT GRID */}
+      <div className="dashboard-sections" style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '1.2rem' }}>
+        
+        {/* LEFT COLUMN: HERO TIMETABLE AND CHECKLISTS */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+          
+          {/* DAILY TIMETABLE SECTION CARD (Main Hero Segment) */}
+          <div className="section-card" style={{ padding: '1.4rem', borderRadius: '12px', borderLeft: '5px solid var(--primary)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <CuteDaisyFlower size={14} style={{ animation: 'spin 10s linear infinite' }} />
+                <span>Today's Academic Flow</span>
+              </h3>
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'timetable' }))}
+                style={{ 
+                  background: 'transparent',
+                  border: '1.5px solid #ff7899',
+                  borderRadius: '20px',
+                  padding: '0.25rem 0.9rem',
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  color: '#ff7899',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.2rem',
+                  transition: 'var(--transition)'
+                }}
+                className="btn-timetable-shortcut"
+              >
+                Open Timetable →
+              </button>
             </div>
-            <div className="metric-details">
-              <span className="metric-value" style={{ color: 'var(--success-text)' }}>{data.stats.averageAttendance}%</span>
-              <span className="metric-label">Avg Attendance</span>
-            </div>
-          </div>
-          {/* Green Sparkline Vector */}
-          <svg className="metric-sparkline" viewBox="0 0 100 30">
-            <path d="M0,25 Q15,20 30,22 T60,10 T90,5 T100,12" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" />
-          </svg>
-        </div>
 
-        {/* Pending Tasks Stat */}
-        <div className="metric-card">
-          <div className="metric-left-block">
-            <div className="metric-icon" style={{ background: 'var(--warning-glow)', color: 'var(--warning-text)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-              <ClipboardList size={20} />
-            </div>
-            <div className="metric-details">
-              <span className="metric-value" style={{ color: 'var(--warning-text)' }}>{data.stats.totalPendingAssignments}</span>
-              <span className="metric-label">Pending Tasks</span>
-            </div>
-          </div>
-          {/* Yellow Sparkline Vector */}
-          <svg className="metric-sparkline" viewBox="0 0 100 30">
-            <path d="M0,10 Q15,25 30,15 T60,25 T90,12 T100,8" fill="none" stroke="var(--warning)" strokeWidth="2.5" strokeLinecap="round" />
-          </svg>
-        </div>
-
-        {/* Next Exam Stat */}
-        <div className="metric-card">
-          <div className="metric-left-block">
-            <div className="metric-icon" style={{ background: 'var(--purple-glow)', color: 'var(--purple-text)', border: '1px solid rgba(124, 58, 237, 0.2)' }}>
-              <Calendar size={20} />
-            </div>
-            <div className="metric-details">
-              <span className="metric-value" style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--purple-text)' }}>
-                {data.nextExam ? data.nextExam.title : 'No Exams'}
-              </span>
-              <span className="metric-label">Upcoming Exams</span>
-            </div>
-          </div>
-          {/* Purple Sparkline Vector */}
-          <svg className="metric-sparkline" viewBox="0 0 100 30">
-            <path d="M0,25 Q15,15 30,20 T60,5 T90,18 T100,5" fill="none" stroke="#8b5cf6" strokeWidth="2.5" strokeLinecap="round" />
-          </svg>
-        </div>
-      </div>
-
-      {/* 3. SCHEDULES GRID */}
-      <div className="dashboard-sections">
-        {/* Today's Timetable */}
-        <div className="section-card">
-          <div className="section-card-header">
-            <h2>Today's Timetable</h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>
-              <Clock size={13} />
-              <span>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
-            </div>
-          </div>
-
-          <div className="classes-list">
             {data.classesToday.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '1.8rem 1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                <SleepingCloud />
-                <p style={{ marginTop: '0.6rem', fontWeight: 600 }}>No classes scheduled for today.</p>
-                <p style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.15rem' }}>Enjoy your day off or catch up on reading! 📚</p>
+              <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                <p style={{ fontWeight: 600 }}>No classes scheduled for today. Enjoy a quiet study break! 📚</p>
               </div>
             ) : (
-              data.classesToday.map(c => {
-                const active = isClassActiveNow(c.start_time, c.end_time, c.day_of_week);
-                return (
-                  <div 
-                    key={c.id} 
-                    className={`class-card-item ${active ? 'active-now' : ''}`}
-                  >
-                    <div className="class-time">
-                      <span>{c.start_time}</span>
-                      <span className="duration">to {c.end_time}</span>
-                    </div>
-                    <div className="class-details-block" style={{ borderLeftColor: c.subject_color }}>
-                      <span className="badge" style={{ background: c.subject_color + '20', color: c.subject_color, border: 'none', marginBottom: '0.2rem', display: 'inline-block' }}>
-                        {c.subject_code}
-                      </span>
-                      <div className="class-subject-title" style={{ color: 'var(--text-primary)' }}>{c.subject_name}</div>
-                      {c.location && (
-                        <div className="class-room">
-                          <MapPin size={11} style={{ color: 'var(--text-muted)' }} />
-                          <span>{c.location}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', position: 'relative', paddingLeft: '1.3rem', marginTop: '0.4rem' }}>
+                {/* Timeline axis line */}
+                <div style={{ 
+                  position: 'absolute', 
+                  left: '5px', 
+                  top: '12px', 
+                  bottom: '12px', 
+                  width: '2px', 
+                  borderLeft: '1.5px dashed var(--primary)', 
+                  opacity: 0.35 
+                }} />
+
+                {data.classesToday.map((c) => {
+                  const active = isClassActiveNow(c.start_time, c.end_time, c.day_of_week);
+                  
+                  // Pick dynamic icons
+                  let classIcon = <BookOpen size={15} />;
+                  let iconBg = '#ffeef1';
+                  let iconColor = '#ff5e84';
+                  
+                  const nameLower = c.subject_name.toLowerCase();
+                  if (nameLower.includes('algorithm') || nameLower.includes('programming') || nameLower.includes('software')) {
+                    classIcon = <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>&lt;/&gt;</span>;
+                    iconBg = '#f5effc';
+                    iconColor = '#b6a6ca';
+                  } else if (nameLower.includes('network') || nameLower.includes('database')) {
+                    classIcon = <BookOpen size={15} />;
+                    iconBg = '#ffeef1';
+                    iconColor = '#ff5e84';
+                  } else if (nameLower.includes('vision') || nameLower.includes('image') || nameLower.includes('graphics')) {
+                    classIcon = <span style={{ fontSize: '0.95rem' }}>📷</span>;
+                    iconBg = '#fff9e6';
+                    iconColor = '#e6c15c';
+                  } else if (nameLower.includes('deep') || nameLower.includes('intelligence') || nameLower.includes('machine')) {
+                    classIcon = <span style={{ fontSize: '0.95rem' }}>🧠</span>;
+                    iconBg = '#eefdf8';
+                    iconColor = '#3ec9a5';
+                  }
+
+                  return (
+                    <div 
+                      key={c.id} 
+                      style={{ 
+                        position: 'relative',
+                        display: 'flex', 
+                        alignItems: 'center',
+                        transition: 'transform 0.2s ease-in-out'
+                      }}
+                      className="timeline-item-wrapper"
+                    >
+                      {/* Timeline node marker overlay */}
+                      <div style={{ 
+                        position: 'absolute', 
+                        left: '-17px', 
+                        top: '50%', 
+                        transform: 'translateY(-50%)',
+                        width: '10px', 
+                        height: '10px', 
+                        borderRadius: '50%', 
+                        background: active ? 'var(--primary)' : 'var(--bg-surface)', 
+                        border: `2px solid ${c.subject_color || 'var(--primary)'}`,
+                        zIndex: 2,
+                        boxShadow: active ? '0 0 0 3px rgba(255, 94, 132, 0.15)' : 'none'
+                      }}>
+                        {active && (
+                          <div style={{ 
+                            position: 'absolute',
+                            top: '-2px',
+                            left: '-2px',
+                            right: '-2px',
+                            bottom: '-2px',
+                            borderRadius: '50%',
+                            border: '1.5px solid var(--primary)',
+                            animation: 'ping 1.5s infinite'
+                          }} />
+                        )}
+                      </div>
+
+                      {/* Class details capsule block */}
+                      <div 
+                        style={{ 
+                          display: 'flex',
+                          alignItems: 'center',
+                          flex: 1,
+                          padding: '0.75rem 1.1rem',
+                          background: 'var(--bg-surface)',
+                          border: '1px solid var(--border-color)',
+                          borderLeft: `4px solid ${c.subject_color || 'var(--primary)'}`,
+                          borderRadius: '10px',
+                          marginLeft: '0.5rem',
+                          boxShadow: active ? '0 4px 12px rgba(255, 94, 132, 0.04)' : '0 2px 6px rgba(0,0,0,0.015)'
+                        }}
+                      >
+                        {/* Time block */}
+                        <div style={{ display: 'flex', flexDirection: 'column', width: '55px', flexShrink: 0 }}>
+                          <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#ff5e84' }}>{c.start_time}</span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--text-muted)' }}>{c.end_time}</span>
                         </div>
-                      )}
+
+                        {/* Dotted vertical line separator */}
+                        <div style={{ borderLeft: '1.5px dotted var(--border-color)', height: '22px', margin: '0 0.85rem' }} />
+
+                        {/* Text detail */}
+                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {c.subject_name}
+                            </span>
+                            {active && (
+                              <span className="badge" style={{ background: 'var(--primary)', color: 'white', fontSize: '0.45rem', padding: '0.05rem 0.25rem' }}>ACTIVE</span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.15rem', marginTop: '0.15rem' }}>
+                            <MapPin size={9} style={{ opacity: 0.7 }} />
+                            {c.location || 'No Room'}
+                          </span>
+                        </div>
+
+                        {/* Right End Icon Badge */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '8px', background: iconBg, color: iconColor, flexShrink: 0 }}>
+                          {classIcon}
+                        </div>
+                      </div>
+
                     </div>
-                    {active && (
-                      <span className="badge" style={{ background: 'var(--primary)', color: 'white', fontSize: '0.6rem', padding: '0.15rem 0.4rem', animation: 'pulse 1.5s infinite' }}>ACTIVE</span>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Upcoming Deadlines */}
-        <div className="section-card">
-          <div className="section-card-header">
-            <h2>Upcoming Deadlines</h2>
-            <span className="tasks-counter">{data.upcomingAssignments.length}</span>
-          </div>
-
-          <div className="deadlines-checklist">
-            {data.upcomingAssignments.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                <CuteClipboard />
-                <p style={{ marginTop: '0.6rem', fontWeight: 600 }}>All clear! No upcoming tasks.</p>
-                <p style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.15rem' }}>You're doing amazing! 🌸</p>
+                  );
+                })}
               </div>
-            ) : (
-              data.upcomingAssignments.map(item => (
-                <div key={item.id} className="deadline-item">
-                  <div 
-                    className="deadline-checkbox" 
-                    onClick={() => handleToggleAssignment(item.id)}
-                  />
-                  <div className="deadline-info">
-                    <span className="title">{item.title}</span>
-                    <div className="deadline-meta">
-                      <span style={{ color: item.subject_color, fontWeight: 700 }}>{item.subject_name}</span>
-                      <span>•</span>
-                      <span>Due {formatDueDate(item.due_date)}</span>
-                    </div>
-                  </div>
-                </div>
-              ))
             )}
           </div>
+
+          {/* UPCOMING TASKS & EXAMS SIDE BY SIDE GRID */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 1fr', gap: '1rem' }}>
+            
+            {/* COLUMN 1: UPCOMING TASKS */}
+            <div className="section-card" style={{ padding: '1rem', borderRadius: '12px', borderTop: '4px solid var(--purple-text)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.7rem' }}>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <span>☑️</span> Upcoming Tasks
+                </h3>
+                <span 
+                  onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'tasks' }))}
+                  style={{ fontSize: '0.68rem', fontWeight: 700, color: '#ff7899', cursor: 'pointer' }}
+                >
+                  View All
+                </span>
+              </div>
+
+              <div className="deadlines-checklist" style={{ gap: '0.4rem' }}>
+                {data.upcomingAssignments.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '1.5rem 1rem', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                    <p style={{ fontWeight: 600, margin: 0 }}>All clear! No tasks. 🌸</p>
+                  </div>
+                ) : (
+                  data.upcomingAssignments.slice(0, 3).map(item => {
+                    const overdue = isOverdue(item.due_date, item.status);
+                    return (
+                      <div key={item.id} className="deadline-item" style={{ position: 'relative', padding: '0.45rem 0.6rem', borderRadius: '8px' }}>
+                        <div 
+                          className="deadline-checkbox" 
+                          onClick={() => handleToggleAssignment(item.id)}
+                          style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                        />
+                        <div className="deadline-info" style={{ paddingLeft: '0.15rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: item.subject_color || 'var(--primary)', flexShrink: 0 }} />
+                            <span className="title" style={{ fontSize: '0.76rem', fontWeight: 600 }}>{item.title}</span>
+                          </div>
+                          <div className="deadline-meta" style={{ paddingLeft: '0.95rem', fontSize: '0.65rem', marginTop: '0.05rem', color: 'var(--text-muted)' }}>
+                            {item.subject_name}
+                          </div>
+                        </div>
+
+                        <span 
+                          className="badge" 
+                          style={{ 
+                            background: overdue ? 'var(--danger-glow)' : 'var(--primary-glow)', 
+                            color: overdue ? 'var(--danger)' : 'var(--primary)', 
+                            border: `1px solid ${overdue ? 'var(--danger)' : 'var(--border-color)'}`, 
+                            position: 'absolute', 
+                            right: '8px', 
+                            top: '50%', 
+                            transform: 'translateY(-50%)',
+                            fontSize: '0.58rem',
+                            fontWeight: 700,
+                            padding: '0.1rem 0.35rem',
+                            borderRadius: '4px'
+                          }}
+                        >
+                          {overdue ? 'Overdue' : formatDueDate(item.due_date)}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* COLUMN 2: EXAMS AHEAD */}
+            <div className="section-card" style={{ padding: '1rem', borderRadius: '12px', borderTop: '4px solid #8b5cf6' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.7rem' }}>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <span>⭐️</span> Exams Ahead
+                </h3>
+                <span 
+                  onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'exams' }))}
+                  style={{ fontSize: '0.68rem', fontWeight: 700, color: '#ff7899', cursor: 'pointer' }}
+                >
+                  View All
+                </span>
+              </div>
+
+              <div>
+                {!data.upcomingExams || data.upcomingExams.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '0.8rem 0.5rem 0.5rem 0.5rem' }}>
+                    <CuteExamsCalendar />
+                    <p style={{ fontWeight: 700, fontSize: '0.75rem', margin: '0.4rem 0 0.15rem 0', color: 'var(--text-primary)' }}>No upcoming exams</p>
+                    <p style={{ fontSize: '0.62rem', color: 'var(--text-muted)', margin: 0 }}>You're all caught up! Enjoy your free time 🎀</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    {data.upcomingExams.slice(0, 3).map(exam => (
+                      <div 
+                        key={exam.id}
+                        className="deadline-item"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.45rem 0.6rem', borderRadius: '8px' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', overflow: 'hidden' }}>
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: exam.subject_color || 'var(--primary)', flexShrink: 0 }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.76rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{exam.title}</span>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.05rem' }}>
+                              {exam.date}
+                            </span>
+                          </div>
+                        </div>
+                        <span 
+                          className="badge" 
+                          style={{ 
+                            background: 'var(--bg-app)', 
+                            color: 'var(--text-primary)', 
+                            border: '1px solid var(--border-color)',
+                            padding: '0.1rem 0.35rem',
+                            fontSize: '0.58rem',
+                            fontWeight: 700
+                          }}
+                        >
+                          {formatDaysRemaining(exam.date)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+
         </div>
+
+        {/* RIGHT COLUMN: ATTENDANCE, STICKY BUNDLE, REMINDERS PAPER */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+          
+          {/* ATTENDANCE OVERVIEW CARD */}
+          <div className="section-card" style={{ padding: '1.2rem', borderRadius: '12px', position: 'relative' }}>
+            <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', margin: '0 0 0.4rem 0' }}>
+              Attendance Overview
+            </h3>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginTop: '0.2rem' }}>
+              {/* Pink Line Graph */}
+              <div style={{ flex: 1, position: 'relative', height: '65px', display: 'flex', alignItems: 'center' }}>
+                <svg viewBox="0 0 200 60" width="100%" height="60" style={{ overflow: 'visible' }}>
+                  <defs>
+                    <linearGradient id="pink-wave-grad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#ff5e84" stopOpacity="0.15" />
+                      <stop offset="100%" stopColor="#ff5e84" stopOpacity="0.00" />
+                    </linearGradient>
+                  </defs>
+                  {/* Wave Path */}
+                  <path 
+                    d="M 0 35 C 30 15, 50 45, 80 20 C 110 5, 130 50, 160 25 C 180 15, 190 30, 200 20" 
+                    fill="none" 
+                    stroke="#ff5e84" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                  />
+                  {/* Area Fill */}
+                  <path 
+                    d="M 0 35 C 30 15, 50 45, 80 20 C 110 5, 130 50, 160 25 C 180 15, 190 30, 200 20 L 200 60 L 0 60 Z" 
+                    fill="url(#pink-wave-grad)" 
+                  />
+                  {/* Small Sparkles */}
+                  <path d="M15,10 L16.5,11.5 L18,12 L16.5,12.5 L15,14 L13.5,12.5 L12,12 L13.5,11.5 Z" fill="#ff7899" opacity="0.6" />
+                  <path d="M125,12 L126.5,13.5 L128,14 L126.5,14.5 L125,16 L123.5,14.5 L122,14 L123.5,13.5 Z" fill="#ff7899" opacity="0.6" />
+                </svg>
+              </div>
+
+              {/* Stats Value */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+                <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', lineHeight: 1 }}>
+                  {data.stats.averageAttendance}%
+                </span>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.15rem', fontWeight: 700 }}>
+                  Average
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.4rem' }}>
+              <span 
+                onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'attendance' }))}
+                style={{ fontSize: '0.68rem', fontWeight: 700, color: '#ff7899', cursor: 'pointer' }}
+              >
+                View Details →
+              </span>
+            </div>
+          </div>
+
+          {/* CUTE PLAYFUL STICKER: STUDY REMINDER */}
+          <div 
+            className="study-reminder-card" 
+            style={{ 
+              transform: 'rotate(-1deg)',
+              boxShadow: '3px 6px 16px rgba(182, 166, 202, 0.14)'
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', maxWidth: '60%' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'inherit' }}>
+                Study Sticker ✦
+              </span>
+              <span style={{ fontSize: '0.74rem', color: 'inherit', opacity: 0.85, fontWeight: 500, lineHeight: 1.3 }}>
+                Consistency today, success tomorrow 💖
+              </span>
+            </div>
+            <div style={{ flexShrink: 0 }}>
+              <svg viewBox="0 0 100 80" width="80" height="65" style={{ overflow: 'visible' }}>
+                {/* Bunny ears */}
+                <ellipse cx="65" cy="25" rx="4" ry="12" fill="#ffffff" stroke="#e9d5ff" strokeWidth="1" transform="rotate(-10 65 25)" />
+                <ellipse cx="65" cy="25" rx="2" ry="8" fill="#ffd1dc" transform="rotate(-10 65 25)" />
+                
+                <ellipse cx="78" cy="27" rx="4" ry="12" fill="#ffffff" stroke="#e9d5ff" strokeWidth="1" transform="rotate(15 78 27)" />
+                <ellipse cx="78" cy="27" rx="2" ry="8" fill="#ffd1dc" transform="rotate(15 78 27)" />
+
+                {/* Bunny body */}
+                <circle cx="70" cy="50" r="16" fill="#ffffff" stroke="#e9d5ff" strokeWidth="1" />
+                
+                {/* Eyes */}
+                <circle cx="65" cy="48" r="1.5" fill="#4a3764" />
+                <circle cx="75" cy="48" r="1.5" fill="#4a3764" />
+                {/* Nose & Mouth */}
+                <path d="M69,51 L71,51 M70,51 L70,52" stroke="#4a3764" strokeWidth="1" />
+                
+                {/* Blush */}
+                <circle cx="62" cy="51" r="2" fill="#ffb3c6" opacity="0.8" />
+                <circle cx="78" cy="51" r="2" fill="#ffb3c6" opacity="0.8" />
+
+                {/* Books */}
+                <rect x="15" y="55" width="30" height="6" rx="1.5" fill="#c084fc" />
+                <rect x="12" y="61" width="36" height="6" rx="1.5" fill="#ffd1dc" />
+                <line x1="15" y1="58" x2="45" y2="58" stroke="#a855f7" strokeWidth="0.8" />
+                <line x1="12" y1="64" x2="48" y2="64" stroke="#ff8da1" strokeWidth="0.8" />
+                
+                {/* Small heart bubble */}
+                <path d="M48,35 C48,32 45,30 43,32 C41,30 38,32 38,35 C38,39 43,42 43,42 C43,42 48,39 48,35" fill="#f43f5e" opacity="0.75" />
+              </svg>
+            </div>
+          </div>
+
+          {/* PINNED MEMO PAPER SHEET: REMINDERS & ALERTS */}
+          <div 
+            className="section-card pinned-memo-card" 
+            style={{ 
+              padding: '1.2rem 1.1rem 1rem 1.1rem',
+              borderRadius: '2px 2px 10px 4px', 
+              background: '#fffdf0', // Warm paper sheet color in light mode
+              border: '1px solid #f9ebcc',
+              boxShadow: '3px 4px 10px rgba(0,0,0,0.03)',
+              position: 'relative',
+              transform: 'rotate(0.5deg)'
+            }}
+          >
+            {/* Cute pushpin illustration on top */}
+            <span style={{ 
+              position: 'absolute', 
+              top: '-12px', 
+              left: '50%', 
+              transform: 'translateX(-50%)', 
+              fontSize: '1.1rem', 
+              filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.15))',
+              zIndex: 10
+            }}>
+              📌
+            </span>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', borderBottom: '1px dashed rgba(230, 193, 92, 0.3)', paddingBottom: '0.35rem' }}>
+              <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#7d663b', fontFamily: 'var(--font-serif)', margin: 0, letterSpacing: '0.2px' }}>
+                Reminders Board
+              </h3>
+              <span 
+                onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'attendance' }))}
+                style={{ fontSize: '0.65rem', fontWeight: 700, color: '#ff7899', cursor: 'pointer' }}
+              >
+                View All
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+              {remindersList.length === 0 ? (
+                <div style={{ fontSize: '0.72rem', color: '#7d663b', textAlign: 'center', fontStyle: 'italic', padding: '0.6rem 0' }}>
+                  All clear! Enjoy your day 🌸
+                </div>
+              ) : (
+                remindersList.slice(0, 3).map((rem, i) => (
+                  <div 
+                    key={i} 
+                    className="alert-banner-item"
+                    style={{ 
+                      background: 'rgba(255, 255, 255, 0.45)',
+                      border: '1px solid rgba(230, 193, 92, 0.18)',
+                      borderLeft: '3px solid #f5b041',
+                      padding: '0.4rem 0.6rem',
+                      borderRadius: '6px'
+                    }}
+                  >
+                    <span style={{ fontSize: '0.75rem', flexShrink: 0 }}>⚠️</span>
+                    <span style={{ fontSize: '0.7rem', color: '#7d663b', fontWeight: 600, lineHeight: '1.25' }}>
+                      {rem}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+        </div>
+
       </div>
+
+      {/* 4. BOTTOM RIBBON BANNER */}
+      <div className="bottom-ribbon-banner" style={{ filter: 'drop-shadow(0 2px 3px rgba(255, 94, 132, 0.05))', position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <span style={{ fontSize: '1rem' }}>💝</span>
+          <span style={{ fontSize: '0.74rem', fontStyle: 'italic', color: 'inherit', fontWeight: 600 }}>
+            Small steps every day lead to big changes. ✦
+          </span>
+        </div>
+        <span style={{ fontSize: '0.95rem' }}>💖</span>
+      </div>
+
     </div>
   );
 };

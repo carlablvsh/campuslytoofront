@@ -9,6 +9,7 @@ import { Exams } from './pages/Exams';
 import { Notes } from './pages/Notes';
 import { CalendarView } from './pages/Calendar';
 import { AIAssistant } from './pages/AIAssistant';
+import { LandingPage } from './pages/LandingPage';
 
 import { 
   Sparkles, 
@@ -28,11 +29,22 @@ import {
 
 type ActiveTab = 'dashboard' | 'timetable' | 'attendance' | 'tasks' | 'exams' | 'notes' | 'calendar' | 'ai';
 
+const CuteBowSVG: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 14, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ overflow: 'visible', ...style }}>
+    <path d="M12 12 C8 6, 3 8, 5 12 C7 16, 11 13, 12 12 Z" fill="#ffd1dc" stroke="#ff7899" strokeWidth="1.5" />
+    <path d="M12 12 C16 6, 21 8, 19 12 C17 16, 13 13, 12 12 Z" fill="#ffd1dc" stroke="#ff7899" strokeWidth="1.5" />
+    <circle cx="12" cy="12" r="2.5" fill="#ff7899" stroke="#ff5e84" strokeWidth="1" />
+    <path d="M11 13 C9 17, 6 20, 4 21" stroke="#ff7899" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="M13 13 C15 17, 18 20, 20 21" stroke="#ff7899" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
 const AppContent: React.FC = () => {
   const { user, loading, logout, token, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [theme, setTheme] = useState<'dark' | 'light'>('light'); // Light mode default
-  const [greeting, setGreeting] = useState<string>('Welcome back');
+  const [publicView, setPublicView] = useState<'landing' | 'login' | 'signup'>('landing');
+  const [showSidebarPreview, setShowSidebarPreview] = useState<boolean>(false);
 
   // Profile Settings States
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
@@ -247,18 +259,6 @@ const AppContent: React.FC = () => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Compute cute greeting based on time of day
-  useEffect(() => {
-    const hours = new Date().getHours();
-    if (hours >= 5 && hours < 12) {
-      setGreeting('Good morning');
-    } else if (hours >= 12 && hours < 17) {
-      setGreeting('Good afternoon');
-    } else {
-      setGreeting('Good evening');
-    }
-  }, [activeTab]);
-
   if (loading) {
     return (
       <div style={{ 
@@ -278,7 +278,21 @@ const AppContent: React.FC = () => {
   }
 
   if (!user) {
-    return <Auth />;
+    if (publicView === 'login') {
+      return <Auth onBackToLanding={() => setPublicView('landing')} initialIsLogin={true} />;
+    }
+    if (publicView === 'signup') {
+      return <Auth onBackToLanding={() => setPublicView('landing')} initialIsLogin={false} />;
+    }
+    return (
+      <LandingPage 
+        onLoginClick={() => setPublicView('login')} 
+        onSignUpClick={() => setPublicView('signup')} 
+        onLogoClick={() => setShowSidebarPreview(true)}
+        showSidebarPreview={showSidebarPreview}
+        setShowSidebarPreview={setShowSidebarPreview}
+      />
+    );
   }
 
   // Search filter computes
@@ -352,8 +366,32 @@ const AppContent: React.FC = () => {
       
       {/* DESKTOP SIDEBAR */}
       <aside className="sidebar">
-        <div className="brand">
-          <span>Campusly</span>
+        <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem', paddingLeft: '0.4rem', pointerEvents: 'none' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'var(--primary-glow)',
+            width: '32px',
+            height: '32px',
+            borderRadius: '8px',
+            color: 'var(--primary)',
+            flexShrink: 0
+          }}>
+            <GraduationCap size={16} />
+          </div>
+          <span style={{
+            fontWeight: 800,
+            fontSize: '1.35rem',
+            color: 'var(--primary)',
+            fontFamily: 'var(--font-serif)',
+            display: 'flex',
+            alignItems: 'center',
+            letterSpacing: '-0.3px'
+          }}>
+            Campusly
+            <CuteBowSVG size={14} style={{ alignSelf: 'flex-start', marginTop: '-3px', marginLeft: '0.2rem' }} />
+          </span>
         </div>
 
         <ul className="nav-links">
@@ -436,26 +474,28 @@ const AppContent: React.FC = () => {
         {/* APP HEADER */}
         <header className="app-header">
           <div className="header-title">
-            <h1>
-              {activeTab === 'dashboard' && `${greeting}, ${user.username}! ☀️`}
-              {activeTab === 'timetable' && 'Weekly Timetable ✦'}
-              {activeTab === 'attendance' && 'Attendance Margin Tracker ✦'}
-              {activeTab === 'tasks' && 'Assignments & Checklist ✦'}
-              {activeTab === 'exams' && 'Exams timetable ✦'}
-              {activeTab === 'notes' && 'Materials Vault ✦'}
-              {activeTab === 'calendar' && 'Academic Calendar ✦'}
-              {activeTab === 'ai' && 'AI Study Workspace ✦'}
-            </h1>
-            <p>
-              {activeTab === 'dashboard' && "Here's what you have going on today."}
-              {activeTab === 'timetable' && 'Arrange and manage your lectures.'}
-              {activeTab === 'attendance' && 'Calculate safe margins and log present markers.'}
-              {activeTab === 'tasks' && 'Tackle and keep track of pending assignments.'}
-              {activeTab === 'exams' && 'Log midterm schedules and syllabus topics.'}
-              {activeTab === 'notes' && 'Upload textbooks PDFs and view class notes.'}
-              {activeTab === 'calendar' && 'A comprehensive view of your monthly deadlines.'}
-              {activeTab === 'ai' && 'Ask questions and synthesize summaries of your course materials.'}
-            </p>
+            {activeTab !== 'dashboard' && (
+              <>
+                <h1>
+                  {activeTab === 'timetable' && 'Weekly Timetable ✦'}
+                  {activeTab === 'attendance' && 'Attendance Margin Tracker ✦'}
+                  {activeTab === 'tasks' && 'Assignments & Checklist ✦'}
+                  {activeTab === 'exams' && 'Exams timetable ✦'}
+                  {activeTab === 'notes' && 'Materials Vault ✦'}
+                  {activeTab === 'calendar' && 'Academic Calendar ✦'}
+                  {activeTab === 'ai' && 'AI Study Workspace ✦'}
+                </h1>
+                <p>
+                  {activeTab === 'timetable' && 'Arrange and manage your lectures.'}
+                  {activeTab === 'attendance' && 'Calculate safe margins and log present markers.'}
+                  {activeTab === 'tasks' && 'Tackle and keep track of pending assignments.'}
+                  {activeTab === 'exams' && 'Log midterm schedules and syllabus topics.'}
+                  {activeTab === 'notes' && 'Upload textbooks PDFs and view class notes.'}
+                  {activeTab === 'calendar' && 'A comprehensive view of your monthly deadlines.'}
+                  {activeTab === 'ai' && 'Ask questions and synthesize summaries of your course materials.'}
+                </p>
+              </>
+            )}
           </div>
 
           <div className="header-actions">

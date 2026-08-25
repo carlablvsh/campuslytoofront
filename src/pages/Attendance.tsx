@@ -185,24 +185,13 @@ export const Attendance: React.FC = () => {
       </div>
     );
   }
-
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      
-      <div>
-        <h2 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Attendance Tracker</h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.1rem' }}>
-          Monitor your attendance margins and test schedule scenarios. Keep percentages above your course targets.
-        </p>
-      </div>
-
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
       {error && (
         <div className="alert-banner danger">
           <span>{error}</span>
         </div>
-      )}
-
-      {/* Log Past Attendance Card */}
+      )}      {/* Log Past Attendance Card */}
       {stats.length > 0 && (
         <div className="section-card" style={{ padding: '1.2rem 1.6rem', background: 'var(--bg-surface)' }}>
           <h3 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '0.8rem', color: 'var(--text-primary)' }}>Log Past Attendance ✦</h3>

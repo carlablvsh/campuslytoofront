@@ -174,14 +174,9 @@ export const Tasks: React.FC = () => {
   }
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Assignments & Deadlines</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.1rem' }}>Log course tasks and track submission status.</p>
-        </div>
-        
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
         <button className="btn-primary" onClick={() => setShowModal(true)}>
           <Plus size={18} />
           Create Task
@@ -260,7 +255,7 @@ export const Tasks: React.FC = () => {
         </div>
 
         {/* Completed Column */}
-        <div className="tasks-column" style={{ background: 'rgba(0,0,0,0.05)' }}>
+        <div className="tasks-column" style={{ background: 'rgba(255, 94, 132, 0.015)' }}>
           <div className="tasks-column-header">
             <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               Completed

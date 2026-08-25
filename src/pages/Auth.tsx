@@ -2,9 +2,24 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { GraduationCap, Lock, Mail, User, ArrowRight } from 'lucide-react';
 
-export const Auth: React.FC = () => {
+interface AuthProps {
+  onBackToLanding?: () => void;
+  initialIsLogin?: boolean;
+}
+
+const CuteBowSVG: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 14, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ overflow: 'visible', ...style }}>
+    <path d="M12 12 C8 6, 3 8, 5 12 C7 16, 11 13, 12 12 Z" fill="#ffd1dc" stroke="#ff7899" strokeWidth="1.5" />
+    <path d="M12 12 C16 6, 21 8, 19 12 C17 16, 13 13, 12 12 Z" fill="#ffd1dc" stroke="#ff7899" strokeWidth="1.5" />
+    <circle cx="12" cy="12" r="2.5" fill="#ff7899" stroke="#ff5e84" strokeWidth="1" />
+    <path d="M11 13 C9 17, 6 20, 4 21" stroke="#ff7899" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="M13 13 C15 17, 18 20, 20 21" stroke="#ff7899" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
+export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = true }) => {
   const { login, register, error, clearError } = useAuth();
-  const [isLogin, setIsLogin] = useState<boolean>(true);
+  const [isLogin, setIsLogin] = useState<boolean>(initialIsLogin);
   const [username, setUsername] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -36,11 +51,36 @@ export const Auth: React.FC = () => {
   return (
     <div className="auth-page fade-in">
       <div className="auth-sidebar">
-        <div className="brand" style={{ marginBottom: '1.5rem', paddingLeft: 0 }}>
-          <div className="brand-icon">
-            <GraduationCap size={20} />
+        <div 
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', paddingLeft: 0, cursor: onBackToLanding ? 'pointer' : 'default' }}
+          onClick={onBackToLanding}
+          title={onBackToLanding ? "Back to Homepage" : ""}
+        >
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'var(--primary-glow)',
+            width: '32px',
+            height: '32px',
+            borderRadius: '8px',
+            color: 'var(--primary)',
+            flexShrink: 0
+          }}>
+            <GraduationCap size={16} />
           </div>
-          <span>Campusly</span>
+          <span style={{
+            fontWeight: 800,
+            fontSize: '1.35rem',
+            color: 'var(--primary)',
+            fontFamily: 'var(--font-serif)',
+            display: 'flex',
+            alignItems: 'center',
+            letterSpacing: '-0.3px'
+          }}>
+            Campusly
+            <CuteBowSVG size={14} style={{ alignSelf: 'flex-start', marginTop: '-3px', marginLeft: '0.2rem' }} />
+          </span>
         </div>
         <h1 style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.1, marginBottom: '1.5rem' }}>
           Your entire campus life, organized.
@@ -52,6 +92,26 @@ export const Auth: React.FC = () => {
 
       <div className="auth-panel">
         <div className="auth-card">
+          {onBackToLanding && (
+            <button 
+              onClick={onBackToLanding}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                fontSize: '0.76rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                marginBottom: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.2rem',
+                padding: 0
+              }}
+            >
+              ← Back to homepage
+            </button>
+          )}
           <div className="auth-tabs">
             <div 
               className={`auth-tab ${isLogin ? 'active' : ''}`}

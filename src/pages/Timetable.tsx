@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth, API_BASE_URL } from '../context/AuthContext';
-import { MapPin, Plus, X, BookOpen, Clock, Edit2, Trash2, Check } from 'lucide-react';
+import { MapPin, Plus, X, Clock, Edit2, Trash2, Check } from 'lucide-react';
 
 interface Subject {
   id: string;
@@ -319,25 +319,22 @@ export const Timetable: React.FC = () => {
   };
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
       
       {/* Header section with buttons */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Weekly Timetable</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.1rem' }}>Arrange your lectures and locate classes.</p>
-        </div>
-        
-        <div style={{ display: 'flex', gap: '0.8rem' }}>
-          <button className="btn-secondary" onClick={() => setShowSubjectModal(true)}>
-            <BookOpen size={16} />
-            Manage Subjects
-          </button>
-          <button className="btn-primary" onClick={() => setShowClassModal(true)}>
-            <Plus size={18} />
-            Add Timetable Class
-          </button>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.8rem' }}>
+        <button 
+          className="btn-secondary" 
+          onClick={() => setShowSubjectModal(true)}
+          style={{ borderColor: '#e67e22', color: '#e67e22', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+        >
+          <Edit2 size={14} />
+          Manage subjects
+        </button>
+        <button className="btn-primary" onClick={() => setShowClassModal(true)}>
+          <Plus size={16} />
+          Add class
+        </button>
       </div>
 
       {error && (
@@ -353,9 +350,9 @@ export const Timetable: React.FC = () => {
             const dayClasses = getClassesForDay(day.value);
             return (
               <div key={day.value} style={{ display: 'contents' }}>
-                <div className="day-column-header">
-                  {day.label}
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 500, marginTop: '0.15rem' }}>
+                <div className="day-column-header" style={{ fontFamily: 'var(--font-serif)', fontSize: '0.9rem' }}>
+                  {day.label.slice(0, 3)}
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 500, marginTop: '0.1rem' }}>
                     {dayClasses.length} {dayClasses.length === 1 ? 'class' : 'classes'}
                   </div>
                 </div>

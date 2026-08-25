@@ -222,25 +222,18 @@ export const Notes: React.FC = () => {
   }
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
       
       {/* Header section with buttons */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Materials & Documents ✦</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.1rem' }}>Upload slides, text documents, or write custom study guides.</p>
-        </div>
-        
-        <div style={{ display: 'flex', gap: '0.8rem' }}>
-          <button className="btn-secondary" onClick={() => setShowTextModal(true)}>
-            <Plus size={16} />
-            Write Note
-          </button>
-          <button className="btn-primary" onClick={() => setShowUploadModal(true)}>
-            <Upload size={16} />
-            Upload File
-          </button>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.8rem' }}>
+        <button className="btn-secondary" onClick={() => setShowTextModal(true)}>
+          <Plus size={16} />
+          Write Note
+        </button>
+        <button className="btn-primary" onClick={() => setShowUploadModal(true)}>
+          <Upload size={16} />
+          Upload File
+        </button>
       </div>
 
       {error && (
