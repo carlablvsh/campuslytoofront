@@ -303,6 +303,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   showSidebarPreview,
   setShowSidebarPreview
 }) => {
+  const [currentView, setCurrentView] = React.useState<'home' | 'pricing' | 'support'>('home');
+  const [name, setName] = React.useState('');
+  const [email, setEmail] = React.useState('');
+  const [subject, setSubject] = React.useState('General Enquiry');
+  const [message, setMessage] = React.useState('');
+  const [submitted, setSubmitted] = React.useState(false);
+
+  const handleSubmitSupport = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitted(true);
+  };
+
+  const scrollToSection = (id: string) => {
+    setCurrentView('home');
+    setTimeout(() => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 50);
+  };
+
   const features = [
     { id: 'timetable', label: 'Timetable', icon: Clock, desc: 'Manage your class schedule easily' },
     { id: 'attendance', label: 'Attendance', icon: GraduationCap, desc: 'Track attendance and stay consistent' },
@@ -344,7 +366,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       }}>
         {/* Clickable Logo */}
         <div 
-          onClick={onLogoClick} 
+          onClick={() => { setCurrentView('home'); onLogoClick(); }} 
           style={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -374,11 +396,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         {/* Center menu links */}
         <div className="landing-menu-links" style={{ display: 'flex', gap: '1.8rem', fontSize: '0.85rem', fontWeight: 700, color: '#6a521a' }}>
-          <span style={{ cursor: 'pointer' }}>Features</span>
-          <span style={{ cursor: 'pointer' }}>For Students</span>
-          <span style={{ cursor: 'pointer' }}>AI Assistant</span>
-          <span style={{ cursor: 'pointer' }}>Pricing</span>
-          <span style={{ cursor: 'pointer' }}>About</span>
+          <span style={{ cursor: 'pointer' }} onClick={() => scrollToSection('features-section')}>Features</span>
+          <span style={{ cursor: 'pointer' }} onClick={() => scrollToSection('students-section')}>Reviews</span>
+          <span style={{ cursor: 'pointer' }} onClick={() => scrollToSection('ai-assistant-section')}>AI Companion</span>
+          <span style={{ cursor: 'pointer' }} onClick={() => setCurrentView('pricing')}>Pricing</span>
+          <span style={{ cursor: 'pointer' }} onClick={() => setCurrentView('support')}>Support</span>
+          <span style={{ cursor: 'pointer' }} onClick={() => scrollToSection('about-section')}>About</span>
         </div>
 
         {/* Action Buttons */}
@@ -523,8 +546,448 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       )}
 
-      {/* 1. HERO SECTION (LEFT / RIGHT COMPOSITION) */}
-      <section style={{ 
+      {currentView === 'pricing' ? (
+        <div style={{ padding: '4.5rem 2rem', maxWidth: '1000px', margin: '0 auto', textAlign: 'center', animation: 'fade-in 0.3s ease-out' }}>
+          
+          {/* Header */}
+          <div style={{ marginBottom: '3.5rem', position: 'relative' }}>
+            <span style={{ fontSize: '0.8rem', color: '#ff7899', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', marginBottom: '0.5rem' }}>
+              <Sparkles size={14} /> Pricing Plans
+            </span>
+            <h1 style={{ fontSize: '3rem', fontWeight: 900, fontFamily: 'var(--font-serif)', color: '#2e1622', margin: '0 0 1rem 0' }}>
+              Cozy plans for bright minds 🌸
+            </h1>
+            <p style={{ color: '#8c707a', fontSize: '1.05rem', maxWidth: '600px', margin: '0 auto', lineHeight: 1.6 }}>
+              Whether you want a simple tracker or unlimited AI study assistance, we have a plan crafted for your success.
+            </p>
+          </div>
+
+          {/* Pricing Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem', maxWidth: '800px', margin: '0 auto 4rem auto' }} className="responsive-grid">
+            
+            {/* Plan 1: Free */}
+            <div className="landing-hover-card" style={{
+              background: '#ffffff',
+              border: '1.5px solid #ffd1dc',
+              borderRadius: '24px',
+              padding: '2.5rem 2rem',
+              textAlign: 'left',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              boxShadow: '0 8px 24px rgba(255, 94, 132, 0.02)',
+              position: 'relative'
+            }}>
+              <div>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#2e1622', margin: '0 0 0.5rem 0' }}>Cozy Learner</h3>
+                <p style={{ fontSize: '0.82rem', color: '#8c707a', margin: '0 0 1.5rem 0' }}>Perfect for tracking your daily classes and basic attendance safety margins.</p>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.1rem', marginBottom: '2rem' }}>
+                  <span style={{ fontSize: '2.5rem', fontWeight: 900, color: '#2e1622' }}>$0</span>
+                  <span style={{ fontSize: '0.85rem', color: '#8c707a', fontWeight: 600 }}>/ month</span>
+                </div>
+
+                <hr style={{ border: 0, borderTop: '1px solid rgba(255, 120, 153, 0.12)', marginBottom: '1.8rem' }} />
+
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.8rem', fontSize: '0.85rem', color: '#5a424a' }}>
+                  <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> Standard weekly schedule (up to 8 classes)
+                  </li>
+                  <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> Attendance safety margin calculator
+                  </li>
+                  <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> Tasks & exams logging lists
+                  </li>
+                  <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> Save up to 5 course documents/notes
+                  </li>
+                  <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> Standard study companion AI responses
+                  </li>
+                </ul>
+              </div>
+
+              <div style={{ marginTop: '2.5rem' }}>
+                {/* DEVELOPER HOOK: To hook up your custom pricing link:
+                    1. For free accounts, this just points to the normal SignUp trigger.
+                    2. If you want a sign-up redirect with query parameter, you can use:
+                       onClick={() => window.location.href = '/signup?plan=free'}
+                */}
+                <button 
+                  onClick={onSignUpClick}
+                  style={{
+                    width: '100%',
+                    background: '#ffffff',
+                    border: '1.5px solid #ff7899',
+                    color: '#ff7899',
+                    borderRadius: '25px',
+                    padding: '0.75rem',
+                    fontSize: '0.88rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'var(--transition)'
+                  }}
+                  className="btn-login-outline"
+                >
+                  Start Learning Free
+                </button>
+              </div>
+            </div>
+
+            {/* Plan 2: Pro */}
+            <div className="landing-hover-card" style={{
+              background: '#ffffff',
+              border: '2.5px solid #ff7899',
+              borderRadius: '24px',
+              padding: '2.5rem 2rem',
+              textAlign: 'left',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              boxShadow: '0 12px 30px rgba(255, 94, 132, 0.08)',
+              position: 'relative',
+              transform: 'scale(1.02)'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-15px',
+                right: '25px',
+                background: '#ff7899',
+                color: '#ffffff',
+                fontSize: '0.68rem',
+                fontWeight: 900,
+                padding: '0.3rem 0.8rem',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                boxShadow: '0 4px 10px rgba(255, 94, 132, 0.2)'
+              }}>
+                <CuteBowSVG size={12} style={{ filter: 'brightness(0) invert(1)' }} />
+                <span>POPULAR CHOICE</span>
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#2e1622', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  Scholar Pro <Sparkles size={16} style={{ color: '#ff7899' }} />
+                </h3>
+                <p style={{ fontSize: '0.82rem', color: '#8c707a', margin: '0 0 1.5rem 0' }}>Unlock unlimited file query limits, robust multi-chunk AI context, and smart notifications.</p>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.1rem', marginBottom: '2rem' }}>
+                  <span style={{ fontSize: '2.5rem', fontWeight: 900, color: '#2e1622' }}>$4.99</span>
+                  <span style={{ fontSize: '0.85rem', color: '#8c707a', fontWeight: 600 }}>/ month</span>
+                </div>
+
+                <hr style={{ border: 0, borderTop: '1px solid rgba(255, 120, 153, 0.12)', marginBottom: '1.8rem' }} />
+
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.8rem', fontSize: '0.85rem', color: '#5a424a' }}>
+                  <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> <strong>Unlimited</strong> timetable classes with collision override
+                  </li>
+                  <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> <strong>Unlimited</strong> PDF, TXT, MD note uploads (up to 5MB each)
+                  </li>
+                  <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> <strong>Enhanced TF-IDF RAG</strong> scanning up to 8 contextual chunks
+                  </li>
+                  <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> <strong>Infinite</strong> AI Companion study tokens
+                  </li>
+                  <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> <strong>Persistent unread notifications</strong> system sync
+                  </li>
+                  <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> Priority features update access & themes
+                  </li>
+                </ul>
+              </div>
+
+              <div style={{ marginTop: '2.5rem' }}>
+                {/* DEVELOPER HOOK: To connect with payment gateways (Stripe, Lemonsqueezy, Paddle, etc.):
+                    1. Replace the onClick handler below to redirect users to your payment provider checkout page link.
+                       Example:
+                       onClick={() => window.open('https://buy.stripe.com/test_6oEg1d9yX5c2a1e', '_blank')}
+                    
+                    2. If you are handling custom customer attributes from backend, trigger a fetch request:
+                       onClick={async () => {
+                         const res = await fetch('/api/billing/checkout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+                         const data = await res.json();
+                         window.location.href = data.checkoutUrl;
+                       }}
+                */}
+                <button 
+                  onClick={onSignUpClick}
+                  style={{
+                    width: '100%',
+                    background: 'linear-gradient(135deg, #ff7899, #ff5e84)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '25px',
+                    padding: '0.8rem',
+                    fontSize: '0.88rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    boxShadow: '0 4px 12px rgba(255, 94, 132, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.3rem'
+                  }}
+                  className="btn-hero-primary"
+                >
+                  Upgrade to Scholar Pro <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'left', borderTop: '1px solid rgba(255, 120, 153, 0.12)', paddingTop: '3rem' }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: 'var(--font-serif)', color: '#2e1622', marginBottom: '1.5rem', textAlign: 'center' }}>
+              Frequently Asked Questions
+            </h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              {[
+                { q: "Can I cancel my premium subscription at any time?", a: "Yes, you can cancel your subscription inside your settings pane anytime. Your premium access will continue to stay active until the end of the current billing cycle." },
+                { q: "What types of notes can I upload to Campusly AI?", a: "We securely support PDF, TXT, and Markdown (.md) documents. Each file can be up to 5MB in size." },
+                { q: "How does the TF-IDF AI study assistant work?", a: "When you upload files, Campusly indexes terms. When you query the bot, we calculate relevance matrices using Term Frequency-Inverse Document Frequency weight parameters and supply up to 8 content chunks as direct source references to Gemini." }
+              ].map((faq, idx) => (
+                <div key={idx} style={{ background: 'var(--bg-app)', padding: '1rem 1.2rem', borderRadius: '12px', border: '1px solid rgba(255, 120, 153, 0.05)' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#2e1622', display: 'block', marginBottom: '0.3rem' }}>{faq.q}</span>
+                  <span style={{ fontSize: '0.76rem', color: '#8c707a', lineHeight: 1.4, display: 'block' }}>{faq.a}</span>
+                </div>
+              ))}
+          </div>
+        </div>
+      </div>
+
+      ) : currentView === 'support' ? (
+        <div style={{ padding: '4.5rem 2rem', maxWidth: '900px', margin: '0 auto', textAlign: 'center', animation: 'fade-in 0.3s ease-out' }}>
+          {/* Header */}
+          <div style={{ marginBottom: '3rem', position: 'relative' }}>
+            <span style={{ fontSize: '0.8rem', color: '#ff7899', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', marginBottom: '0.5rem' }}>
+              <CuteBowSVG size={14} /> Help & Support
+            </span>
+            <h1 style={{ fontSize: '3rem', fontWeight: 900, fontFamily: 'var(--font-serif)', color: '#2e1622', margin: '0 0 1rem 0' }}>
+              We're here to help! 🌸
+            </h1>
+            <p style={{ color: '#8c707a', fontSize: '1.05rem', maxWidth: '600px', margin: '0 auto', lineHeight: 1.6 }}>
+              Have questions, feedback, or need premium billing support? Drop us a message and our cozy support team will get back to you shortly!
+            </p>
+          </div>
+
+          {/* Form & Info layout */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2.5rem', textAlign: 'left' }} className="responsive-grid">
+            
+            {/* Form Card */}
+            <div style={{
+              background: '#ffffff',
+              border: '1.5px solid #ffd1dc',
+              borderRadius: '24px',
+              padding: '2.5rem',
+              boxShadow: '0 8px 24px rgba(255, 94, 132, 0.02)'
+            }} className="landing-hover-card">
+              {submitted ? (
+                <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: '#eefdf8',
+                    color: '#3ec9a5',
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    marginBottom: '1.5rem'
+                  }}>
+                    <span style={{ fontSize: '1.8rem' }}>🌸</span>
+                  </div>
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'var(--font-serif)', color: '#2e1622', marginBottom: '0.5rem' }}>Message Sent!</h3>
+                  <p style={{ color: '#8c707a', fontSize: '0.88rem', lineHeight: 1.5, margin: 0 }}>
+                    Thank you for reaching out! We have received your query and our cozy support team will get back to you within 24 hours.
+                  </p>
+                  <button 
+                    onClick={() => {
+                      setSubmitted(false);
+                      setName('');
+                      setEmail('');
+                      setSubject('General Enquiry');
+                      setMessage('');
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: '1.5px solid #ff7899',
+                      color: '#ff7899',
+                      borderRadius: '20px',
+                      padding: '0.45rem 1.4rem',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      marginTop: '1.5rem'
+                    }}
+                  >
+                    Send Another Message
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmitSupport} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#2e1622' }}>Your Name</label>
+                    <input 
+                      type="text" 
+                      required 
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      placeholder="e.g. Carla"
+                      style={{
+                        padding: '0.65rem 0.9rem',
+                        border: '1.5px solid #ffd1dc',
+                        borderRadius: '12px',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        background: '#fffdfd'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#2e1622' }}>Email Address</label>
+                    <input 
+                      type="email" 
+                      required 
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="e.g. carla@example.com"
+                      style={{
+                        padding: '0.65rem 0.9rem',
+                        border: '1.5px solid #ffd1dc',
+                        borderRadius: '12px',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        background: '#fffdfd'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#2e1622' }}>Subject Topic</label>
+                    <select 
+                      value={subject}
+                      onChange={e => setSubject(e.target.value)}
+                      style={{
+                        padding: '0.65rem 0.9rem',
+                        border: '1.5px solid #ffd1dc',
+                        borderRadius: '12px',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        background: '#fffdfd',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="General Enquiry">General Enquiry 🌸</option>
+                      <option value="Feature Feedback">Feature Feedback 💡</option>
+                      <option value="Bug Report">Report a Bug 🐞</option>
+                      <option value="Billing / Pro Account">Billing & Scholar Pro Help 💎</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#2e1622' }}>Your Message</label>
+                    <textarea 
+                      required 
+                      value={message}
+                      onChange={e => setMessage(e.target.value)}
+                      placeholder="How can we help you today?"
+                      style={{
+                        padding: '0.75rem 0.9rem',
+                        border: '1.5px solid #ffd1dc',
+                        borderRadius: '12px',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        background: '#fffdfd',
+                        minHeight: '120px',
+                        resize: 'vertical'
+                      }}
+                    />
+                  </div>
+
+                  <button 
+                    type="submit"
+                    style={{
+                      background: 'linear-gradient(135deg, #ff7899, #ff5e84)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '25px',
+                      padding: '0.75rem',
+                      fontSize: '0.88rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(255, 94, 132, 0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem',
+                      marginTop: '0.5rem'
+                    }}
+                  >
+                    Send Message <ArrowRight size={14} />
+                  </button>
+                </form>
+              )}
+            </div>
+
+            {/* Quick Support info */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              
+              {/* Cozy help sticker */}
+              <div style={{
+                background: 'linear-gradient(135deg, #fffbeb, #fff8f2)',
+                border: '1.5px solid rgba(230, 193, 92, 0.2)',
+                borderRadius: '24px',
+                padding: '2rem',
+                textAlign: 'left',
+                position: 'relative'
+              }} className="landing-hover-card">
+                <span style={{ fontSize: '1.5rem', position: 'absolute', top: '15px', right: '15px' }}>🌸</span>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'var(--font-serif)', color: '#2e1622', marginBottom: '0.75rem' }}>Cozy Study Tips</h3>
+                <p style={{ fontSize: '0.82rem', color: '#6e5261', lineHeight: 1.5, margin: 0 }}>
+                  Did you know? Setting up overlapping timetable classes triggers conflicts detection automatically. Make sure to double check your schedule on the Timetable pane before logging attendance!
+                </p>
+              </div>
+
+              {/* FAQ card summary */}
+              <div style={{
+                background: '#ffffff',
+                border: '1.5px solid #ffd1dc',
+                borderRadius: '24px',
+                padding: '2rem'
+              }} className="landing-hover-card">
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#2e1622', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  Quick FAQ Info
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', fontSize: '0.76rem', color: '#8c707a' }}>
+                  <div>
+                    <strong style={{ color: '#2e1622', display: 'block', marginBottom: '0.15rem' }}>Where is my password reset email?</strong>
+                    <span>Emails are sent securely via SMTP routing transporter. Check your spam box if it doesn't arrive within 5 minutes.</span>
+                  </div>
+                  <div>
+                    <strong style={{ color: '#2e1622', display: 'block', marginBottom: '0.15rem' }}>Can I permanently delete my data?</strong>
+                    <span>Yes! Navigate to the Settings modal Danger Zone inside your Campusly dashboard. Account unlinking cascade deletes all course history permanently.</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      ) : (
+        <>
+          {/* 1. HERO SECTION (LEFT / RIGHT COMPOSITION) */}
+          <section style={{ 
         padding: '5rem 2rem 4rem 2rem', 
         maxWidth: '1100px', 
         margin: '0 auto',
@@ -620,7 +1083,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 2. FEATURES OVERVIEW STRIP ("Everything you need, in one beautiful place") */}
-      <section style={{ 
+      <section id="features-section" style={{ 
         padding: '4rem 2rem', 
         background: 'rgba(255, 120, 153, 0.02)',
         borderTop: '1px solid rgba(255,120,153,0.05)',
@@ -651,7 +1114,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {features.map((feat, i) => {
               const Icon = feat.icon;
               return (
-                <div key={i} style={{ 
+                <div key={i} className="landing-hover-card" style={{ 
                   background: '#ffffff', 
                   border: '1.5px solid #ffd1dc', 
                   borderRadius: '16px', 
@@ -694,7 +1157,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       }} className="responsive-grid">
         
         {/* Left Column: AI Study Assistant */}
-        <div style={{
+        <div id="ai-assistant-section" style={{
           background: 'linear-gradient(135deg, #fffafc, #fffdfd)',
           border: '1.5px solid #ffd1dc',
           borderRadius: '24px',
@@ -808,7 +1271,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 4. TESTIMONIAL SLIDER */}
-      <section style={{ 
+      <section id="students-section" style={{ 
         padding: '3rem 2rem 5rem 2rem', 
         maxWidth: '1100px', 
         margin: '0 auto',
@@ -841,7 +1304,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=64&q=80"
             }
           ].map((item, i) => (
-            <div key={i} style={{ 
+            <div key={i} className="landing-hover-card" style={{ 
               background: '#ffffff', 
               border: '1.5px solid #ffd1dc', 
               borderRadius: '20px', 
@@ -921,9 +1384,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
       </section>
+      </>)}
 
       {/* FOOTER BAR */}
-      <footer style={{ 
+      <footer id="about-section" style={{ 
         padding: '2.2rem', 
         textAlign: 'center', 
         fontSize: '0.74rem', 

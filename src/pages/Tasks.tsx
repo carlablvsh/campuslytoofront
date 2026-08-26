@@ -231,7 +231,7 @@ export const Tasks: React.FC = () => {
                         </p>
                       )}
                       <div className="deadline-meta">
-                        <span style={{ color: item.subject_color, fontWeight: 600 }}>{item.subject_name}</span>
+                        <span style={{ color: 'var(--text-secondary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: item.subject_color, display: 'inline-block' }} />{item.subject_name}</span>
                         <span>•</span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: overdue ? 'var(--danger)' : 'var(--text-muted)' }}>
                           <Calendar size={12} />
@@ -281,7 +281,7 @@ export const Tasks: React.FC = () => {
                   <div className="deadline-info checked">
                     <span className="title">{item.title}</span>
                     <div className="deadline-meta">
-                      <span style={{ color: item.subject_color }}>{item.subject_name}</span>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: item.subject_color, display: 'inline-block' }} />{item.subject_name}</span>
                       <span>•</span>
                       <span>Completed</span>
                     </div>

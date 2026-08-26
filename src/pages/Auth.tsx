@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { GraduationCap, Lock, Mail, User, ArrowRight } from 'lucide-react';
+import { useAuth, API_BASE_URL } from '../context/AuthContext';
+import { GraduationCap, Lock, Mail, User, ArrowRight, Key } from 'lucide-react';
 
 interface AuthProps {
   onBackToLanding?: () => void;
@@ -20,6 +20,13 @@ const CuteBowSVG: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ 
 export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = true }) => {
   const { login, register, error, clearError } = useAuth();
   const [isLogin, setIsLogin] = useState<boolean>(initialIsLogin);
+  const [isForgotPassword, setIsForgotPassword] = useState<boolean>(false);
+  const [isResetPassword, setIsResetPassword] = useState<boolean>(false);
+  const [resetToken, setResetToken] = useState<string>('');
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
   const [username, setUsername] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -27,6 +34,10 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
 
   const handleToggle = (loginState: boolean) => {
     setIsLogin(loginState);
+    setIsForgotPassword(false);
+    setIsResetPassword(false);
+    setLocalError(null);
+    setSuccessMessage(null);
     clearError();
     setUsername('');
     setEmail('');
@@ -38,14 +49,76 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
     if (!email || !password || (!isLogin && !username)) return;
 
     setLoading(true);
+    setLocalError(null);
+    setSuccessMessage(null);
     
     if (isLogin) {
-      await login(email, password);
+      const ok = await login(email, password);
+      if (!ok) {
+        setSuccessMessage(null);
+      }
     } else {
       await register(username, email, password);
     }
     
     setLoading(false);
+  };
+
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    setLoading(true);
+    setLocalError(null);
+    setSuccessMessage(null);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLocalError(data.error || 'Failed to request password reset.');
+      } else {
+        setSuccessMessage(data.message);
+        setIsForgotPassword(false);
+        setIsResetPassword(true);
+      }
+    } catch (err) {
+      setLocalError('Cannot connect to server.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetToken || !newPassword) return;
+    setLoading(true);
+    setLocalError(null);
+    setSuccessMessage(null);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: resetToken, newPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLocalError(data.error || 'Failed to reset password.');
+      } else {
+        setSuccessMessage(data.message);
+        setIsResetPassword(false);
+        setIsForgotPassword(false);
+        setIsLogin(true);
+      }
+    } catch (err) {
+      setLocalError('Cannot connect to server.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -112,91 +185,235 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
               ← Back to homepage
             </button>
           )}
-          <div className="auth-tabs">
-            <div 
-              className={`auth-tab ${isLogin ? 'active' : ''}`}
-              onClick={() => handleToggle(true)}
-            >
-              Sign In
+          {!isForgotPassword && !isResetPassword ? (
+            <div className="auth-tabs">
+              <div 
+                className={`auth-tab ${isLogin ? 'active' : ''}`}
+                onClick={() => handleToggle(true)}
+              >
+                Sign In
+              </div>
+              <div 
+                className={`auth-tab ${!isLogin ? 'active' : ''}`}
+                onClick={() => handleToggle(false)}
+              >
+                Create Account
+              </div>
             </div>
-            <div 
-              className={`auth-tab ${!isLogin ? 'active' : ''}`}
-              onClick={() => handleToggle(false)}
-            >
-              Create Account
-            </div>
-          </div>
+          ) : (
+            <h3 style={{ 
+              fontFamily: 'var(--font-serif)', 
+              fontSize: '1.25rem', 
+              fontWeight: 800, 
+              color: 'var(--text-primary)',
+              marginBottom: '1.2rem',
+              textAlign: 'center'
+            }}>
+              {isForgotPassword ? 'Reset password request' : 'Set your new password'}
+            </h3>
+          )}
 
-          {error && (
-            <div className="alert-banner danger">
-              <span>{error}</span>
+          {(error || localError) && (
+            <div className="alert-banner danger" style={{ marginBottom: '1rem' }}>
+              <span>{localError || error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-            {!isLogin && (
+          {successMessage && (
+            <div className="alert-banner success" style={{ marginBottom: '1rem' }}>
+              <span>{successMessage}</span>
+            </div>
+          )}
+
+
+          {isForgotPassword ? (
+            <form onSubmit={handleForgotPasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <div className="form-group">
-                <label htmlFor="username">Full Name</label>
+                <label htmlFor="email">Email Address</label>
                 <div style={{ position: 'relative' }}>
-                  <User size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                   <input
-                    id="username"
-                    type="text"
+                    id="email"
+                    type="email"
                     className="form-input"
-                    placeholder="Enter your name"
+                    placeholder="name@university.edu"
                     style={{ paddingLeft: '40px', width: '100%' }}
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required={!isLogin}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
                   />
                 </div>
               </div>
-            )}
 
-            <div className="form-group">
-              <label htmlFor="email">Email Address</label>
-              <div style={{ position: 'relative' }}>
-                <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input
-                  id="email"
-                  type="email"
-                  className="form-input"
-                  placeholder="name@university.edu"
-                  style={{ paddingLeft: '40px', width: '100%' }}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                <button 
+                  type="button"
+                  onClick={() => { setIsForgotPassword(false); setLocalError(null); }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  ← Back to login
+                </button>
               </div>
-            </div>
 
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input
-                  id="password"
-                  type="password"
-                  className="form-input"
-                  placeholder="••••••••"
-                  style={{ paddingLeft: '40px', width: '100%' }}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+              <button 
+                type="submit" 
+                className="btn-primary" 
+                style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem', padding: '0.9rem' }}
+                disabled={loading}
+              >
+                {loading ? 'Sending...' : 'Request Reset Token'}
+                {!loading && <ArrowRight size={16} />}
+              </button>
+            </form>
+          ) : isResetPassword ? (
+            <form onSubmit={handleResetPasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              <div className="form-group">
+                <label htmlFor="resetToken">Reset Token</label>
+                <div style={{ position: 'relative' }}>
+                  <Key size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    id="resetToken"
+                    type="text"
+                    className="form-input"
+                    placeholder="Paste your reset token"
+                    style={{ paddingLeft: '40px', width: '100%' }}
+                    value={resetToken}
+                    onChange={(e) => setResetToken(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
-            </div>
 
-            <button 
-              type="submit" 
-              className="btn-primary" 
-              style={{ width: '100%', justifyContent: 'center', marginTop: '1rem', padding: '0.9rem' }}
-              disabled={loading}
-            >
-              {loading ? 'Processing...' : isLogin ? 'Sign In' : 'Get Started'}
-              {!loading && <ArrowRight size={16} />}
-            </button>
-          </form>
+              <div className="form-group">
+                <label htmlFor="newPassword">New Password</label>
+                <div style={{ position: 'relative' }}>
+                  <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    id="newPassword"
+                    type="password"
+                    className="form-input"
+                    placeholder="Min 6 characters"
+                    style={{ paddingLeft: '40px', width: '100%' }}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                <button 
+                  type="button"
+                  onClick={() => { setIsResetPassword(false); setIsForgotPassword(true); setLocalError(null); }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  ← Request new token
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => { setIsResetPassword(false); setIsForgotPassword(false); setLocalError(null); }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <button 
+                type="submit" 
+                className="btn-primary" 
+                style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem', padding: '0.9rem' }}
+                disabled={loading}
+              >
+                {loading ? 'Resetting...' : 'Change Password'}
+                {!loading && <ArrowRight size={16} />}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              {!isLogin && (
+                <div className="form-group">
+                  <label htmlFor="username">Full Name</label>
+                  <div style={{ position: 'relative' }}>
+                    <User size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input
+                      id="username"
+                      type="text"
+                      className="form-input"
+                      placeholder="Enter your name"
+                      style={{ paddingLeft: '40px', width: '100%' }}
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      required={!isLogin}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label htmlFor="email">Email Address</label>
+                <div style={{ position: 'relative' }}>
+                  <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    id="email"
+                    type="email"
+                    className="form-input"
+                    placeholder="name@university.edu"
+                    style={{ paddingLeft: '40px', width: '100%' }}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="password">Password</label>
+                <div style={{ position: 'relative' }}>
+                  <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    id="password"
+                    type="password"
+                    className="form-input"
+                    placeholder="••••••••"
+                    style={{ paddingLeft: '40px', width: '100%' }}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {isLogin && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.4rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setIsForgotPassword(true); setLocalError(null); setSuccessMessage(null); }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--primary)',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: 0
+                    }}
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              )}
+
+              <button 
+                type="submit" 
+                className="btn-primary" 
+                style={{ width: '100%', justifyContent: 'center', marginTop: '0.8rem', padding: '0.9rem' }}
+                disabled={loading}
+              >
+                {loading ? 'Processing...' : isLogin ? 'Sign In' : 'Get Started'}
+                {!loading && <ArrowRight size={16} />}
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </div>

@@ -33,12 +33,12 @@ const DAYS_OF_WEEK = [
 ];
 
 const PRESETS_COLORS = [
-  '#6366f1', // Indigo
-  '#10b981', // Emerald
-  '#f59e0b', // Amber
-  '#ef4444', // Rose
-  '#06b6d4', // Cyan
-  '#8b5cf6', // Violet
+  '#ffd1dc', // Blush Pink
+  '#cce4f6', // Powder Blue
+  '#e5dbfb', // Lavender
+  '#c7ebd7', // Mint
+  '#ffecb3', // Butter Yellow
+  '#ffe2cb', // Soft Peach
 ];
 
 export const Timetable: React.FC = () => {

@@ -254,7 +254,7 @@ export const Exams: React.FC = () => {
                   
                   {/* Subject and exam title */}
                   <div>
-                    <span className="badge" style={{ background: exam.subject_color, marginRight: '0.5rem' }}>{exam.subject_code}</span>
+                    <span className="badge" style={{ background: exam.subject_color, color: '#1a0b14', marginRight: '0.5rem' }}>{exam.subject_code}</span>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{exam.subject_name}</span>
                     <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginTop: '0.4rem', textDecoration: isPassed ? 'line-through' : 'none' }}>
                       {exam.title}

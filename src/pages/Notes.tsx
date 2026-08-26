@@ -268,10 +268,10 @@ export const Notes: React.FC = () => {
                   </button>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ background: note.subject_color + '15', color: note.subject_color, padding: '0.4rem', borderRadius: '8px' }}>
+                    <div style={{ background: 'rgba(255, 94, 132, 0.08)', color: 'var(--primary)', padding: '0.4rem', borderRadius: '8px' }}>
                       <FileText size={18} />
                     </div>
-                    <span className="badge" style={{ background: note.subject_color + '20', color: note.subject_color }}>{note.subject_code}</span>
+                    <span className="badge" style={{ background: note.subject_color, color: '#1a0b14' }}>{note.subject_code}</span>
                   </div>
 
                   <h4 className="note-title" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '0.3rem', color: 'var(--text-primary)' }}>{note.title}</h4>
@@ -433,7 +433,7 @@ export const Notes: React.FC = () => {
           <div className="modal-content" style={{ maxWidth: '600px', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
-                <span className="badge" style={{ background: viewedNote.subject_color + '20', color: viewedNote.subject_color, marginRight: '0.5rem' }}>{viewedNote.subject_code}</span>
+                <span className="badge" style={{ background: viewedNote.subject_color, color: '#1a0b14', marginRight: '0.5rem' }}>{viewedNote.subject_code}</span>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{viewedNote.subject_name}</span>
                 <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginTop: '0.3rem' }}>{viewedNote.title}</h3>
               </div>

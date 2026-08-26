@@ -10,6 +10,7 @@ import { Notes } from './pages/Notes';
 import { CalendarView } from './pages/Calendar';
 import { AIAssistant } from './pages/AIAssistant';
 import { LandingPage } from './pages/LandingPage';
+import { StudyRoom } from './pages/StudyRoom';
 
 import { 
   Sparkles, 
@@ -24,10 +25,11 @@ import {
   Bot,
   Bell,
   Search,
-  X
+  X,
+  Coffee
 } from 'lucide-react';
 
-type ActiveTab = 'dashboard' | 'timetable' | 'attendance' | 'tasks' | 'exams' | 'notes' | 'calendar' | 'ai';
+type ActiveTab = 'dashboard' | 'timetable' | 'attendance' | 'tasks' | 'exams' | 'notes' | 'calendar' | 'ai' | 'studyroom';
 
 const CuteBowSVG: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 14, style }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ overflow: 'visible', ...style }}>
@@ -45,6 +47,75 @@ const AppContent: React.FC = () => {
   const [theme, setTheme] = useState<'dark' | 'light'>('light'); // Light mode default
   const [publicView, setPublicView] = useState<'landing' | 'login' | 'signup'>('landing');
   const [showSidebarPreview, setShowSidebarPreview] = useState<boolean>(false);
+
+  // Notifications State & Fetchers
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState<boolean>(false);
+
+  const fetchNotifications = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/notifications`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data);
+      }
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  };
+
+  const markNotificationAsRead = async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
+      }
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/notifications/read-all`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
+      }
+    } catch (err) {
+      console.error('Error marking all notifications as read:', err);
+    }
+  };
+
+  const dismissNotification = async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/notifications/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+      }
+    } catch (err) {
+      console.error('Error dismissing notification:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (user && token) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user, token]);
 
   // Profile Settings States
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
@@ -142,6 +213,37 @@ const AppContent: React.FC = () => {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+    } catch (err: any) {
+      setProfileError(err.message);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to permanently delete your Campusly account? This action is irreversible and will delete all your classes, notes, tasks, exams, calendar events, and profile data.'
+    );
+    if (!confirmed) return;
+
+    try {
+      setProfileLoading(true);
+      setProfileError(null);
+      const res = await fetch(`${API_BASE_URL}/auth/account`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete account.');
+      }
+
+      alert('Your account has been deleted successfully. We hope to see you back soon! 🌸');
+      setShowProfileModal(false);
+      logout();
     } catch (err: any) {
       setProfileError(err.message);
     } finally {
@@ -334,6 +436,7 @@ const AppContent: React.FC = () => {
     { id: 'exams', label: 'Exams', icon: CalendarIcon },
     { id: 'notes', label: 'Notes Library', icon: FileText },
     { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
+    { id: 'studyroom', label: 'Study Room', icon: Coffee },
     { id: 'ai', label: 'AI Assistant', icon: Bot },
   ] as const;
 
@@ -341,23 +444,25 @@ const AppContent: React.FC = () => {
   const renderActiveView = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard />;
+        return <div className="page-dashboard"><Dashboard /></div>;
       case 'timetable':
-        return <Timetable />;
+        return <div className="page-timetable"><Timetable /></div>;
       case 'attendance':
-        return <Attendance />;
+        return <div className="page-attendance"><Attendance /></div>;
       case 'tasks':
-        return <Tasks />;
+        return <div className="page-tasks"><Tasks /></div>;
       case 'exams':
-        return <Exams />;
+        return <div className="page-exams"><Exams /></div>;
       case 'notes':
-        return <Notes />;
+        return <div className="page-notes"><Notes /></div>;
       case 'calendar':
-        return <CalendarView />;
+        return <div className="page-calendar"><CalendarView /></div>;
+      case 'studyroom':
+        return <div className="page-studyroom"><StudyRoom /></div>;
       case 'ai':
-        return <AIAssistant />;
+        return <div className="page-ai"><AIAssistant /></div>;
       default:
-        return <Dashboard />;
+        return <div className="page-dashboard"><Dashboard /></div>;
     }
   };
 
@@ -469,7 +574,7 @@ const AppContent: React.FC = () => {
       </nav>
 
       {/* MAIN VIEWPORT */}
-      <main className="main-content">
+      <main className="main-content" onClick={() => { if (showNotificationsDropdown) setShowNotificationsDropdown(false); }}>
         
         {/* APP HEADER */}
         <header className="app-header">
@@ -483,6 +588,7 @@ const AppContent: React.FC = () => {
                   {activeTab === 'exams' && 'Exams timetable ✦'}
                   {activeTab === 'notes' && 'Materials Vault ✦'}
                   {activeTab === 'calendar' && 'Academic Calendar ✦'}
+                  {activeTab === 'studyroom' && 'Focus Sanctuary ✦'}
                   {activeTab === 'ai' && 'AI Study Workspace ✦'}
                 </h1>
                 <p>
@@ -492,6 +598,7 @@ const AppContent: React.FC = () => {
                   {activeTab === 'exams' && 'Log midterm schedules and syllabus topics.'}
                   {activeTab === 'notes' && 'Upload textbooks PDFs and view class notes.'}
                   {activeTab === 'calendar' && 'A comprehensive view of your monthly deadlines.'}
+                  {activeTab === 'studyroom' && 'A cozy, distraction-free space to study, listen to ambient sounds, and plan focus blocks.'}
                   {activeTab === 'ai' && 'Ask questions and synthesize summaries of your course materials.'}
                 </p>
               </>
@@ -505,10 +612,128 @@ const AppContent: React.FC = () => {
               <input type="text" className="search-input" placeholder="Search anything... ⌘K" style={{ cursor: 'pointer' }} readOnly />
             </div>
 
-            {/* Notification bell decorator */}
-            <button className="btn-action" title="Notifications" style={{ border: 'none', background: 'transparent' }}>
-              <Bell size={18} />
-            </button>
+            {/* Notification bell with count badge & dropdown panel */}
+            <div style={{ position: 'relative' }}>
+              <button 
+                className="btn-action" 
+                title="Notifications" 
+                style={{ border: 'none', background: 'transparent', position: 'relative' }}
+                onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+              >
+                <Bell size={18} />
+                {notifications.filter(n => !n.is_read).length > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-2px',
+                    right: '-2px',
+                    background: '#ff5e84',
+                    color: '#ffffff',
+                    fontSize: '0.6rem',
+                    fontWeight: 'bold',
+                    width: '15px',
+                    height: '15px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1.5px solid var(--bg-surface)'
+                  }}>
+                    {notifications.filter(n => !n.is_read).length}
+                  </span>
+                )}
+              </button>
+
+              {showNotificationsDropdown && (
+                <div 
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    position: 'absolute',
+                    top: '40px',
+                    right: 0,
+                    width: '320px',
+                    background: 'var(--bg-surface)',
+                    border: '1.5px solid var(--border-color)',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                    zIndex: 1000,
+                    padding: '1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    maxHeight: '380px',
+                    overflowY: 'auto'
+                  }} 
+                  className="notifications-dropdown"
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.6rem', borderBottom: '1px solid var(--border-color)', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>Notifications</span>
+                    {notifications.filter(n => !n.is_read).length > 0 && (
+                      <button 
+                        onClick={() => { markAllNotificationsAsRead(); }}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  {notifications.length === 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '1.5rem' }}>✨</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center' }}>All caught up! No recent alerts.</span>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      {notifications.map((notif) => (
+                        <div 
+                          key={notif.id} 
+                          style={{ 
+                            display: 'flex', 
+                            gap: '0.5rem', 
+                            padding: '0.5rem', 
+                            borderRadius: '8px',
+                            background: notif.is_read ? 'transparent' : 'rgba(255, 120, 153, 0.03)',
+                            border: '1px solid transparent',
+                            alignItems: 'flex-start',
+                            position: 'relative'
+                          }}
+                        >
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 750, color: notif.is_read ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
+                              {notif.title}
+                            </span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.15rem', lineHeight: 1.3 }}>
+                              {notif.message}
+                            </span>
+                            <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                              {new Date(notif.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '0.2rem', alignSelf: 'center' }}>
+                            {!notif.is_read && (
+                              <button 
+                                onClick={() => markNotificationAsRead(notif.id)}
+                                style={{ background: 'transparent', border: 'none', color: '#ff7899', fontSize: '0.85rem', cursor: 'pointer', padding: '0.2rem' }}
+                                title="Mark as read"
+                              >
+                                ✓
+                              </button>
+                            )}
+                            <button 
+                              onClick={() => dismissNotification(notif.id)}
+                              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.85rem', cursor: 'pointer', padding: '0.2rem' }}
+                              title="Dismiss"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Theme Toggle Button */}
             <button 
@@ -583,7 +808,7 @@ const AppContent: React.FC = () => {
                             }}
                           >
                             <div className="spotlight-item-left">
-                              <span style={{ color: c.subject_color || 'var(--primary)' }}>[{c.subject_code}]</span>
+                              <span style={{ color: 'var(--primary)', fontWeight: 700 }}>[{c.subject_code}]</span>
                               <span className="spotlight-item-title">{c.subject_name}</span>
                             </div>
                             <span className="spotlight-item-right">{c.start_time} • {c.location || 'No Room'}</span>
@@ -608,7 +833,7 @@ const AppContent: React.FC = () => {
                             }}
                           >
                             <div className="spotlight-item-left">
-                              <span style={{ color: a.subject_color || 'var(--primary)' }}>[{a.subject_code || 'Task'}]</span>
+                              <span style={{ color: 'var(--primary)', fontWeight: 700 }}>[{a.subject_code || 'Task'}]</span>
                               <span className="spotlight-item-title">{a.title}</span>
                             </div>
                             <span className="spotlight-item-right" style={{ textTransform: 'capitalize' }}>Status: {a.status}</span>
@@ -633,7 +858,7 @@ const AppContent: React.FC = () => {
                             }}
                           >
                             <div className="spotlight-item-left">
-                              <span style={{ color: e.subject_color || '#8b5cf6' }}>[{e.subject_code || 'Exam'}]</span>
+                              <span style={{ color: 'var(--primary)', fontWeight: 700 }}>[{e.subject_code || 'Exam'}]</span>
                               <span className="spotlight-item-title">{e.title}</span>
                             </div>
                             <span className="spotlight-item-right">{e.date}</span>
@@ -661,7 +886,7 @@ const AppContent: React.FC = () => {
                             }}
                           >
                             <div className="spotlight-item-left">
-                              <span style={{ color: n.subject_color || 'var(--primary)' }}>[{n.subject_code || 'Note'}]</span>
+                              <span style={{ color: 'var(--primary)', fontWeight: 700 }}>[{n.subject_code || 'Note'}]</span>
                               <span className="spotlight-item-title">{n.title}</span>
                             </div>
                             <span className="spotlight-item-right">Click to Open File</span>
@@ -786,6 +1011,32 @@ const AppContent: React.FC = () => {
                   {profileLoading ? 'Updating...' : 'Update Password'}
                 </button>
               </form>
+
+              {/* Danger Zone: Delete Account */}
+              <div style={{ borderTop: '1.5px dashed rgba(239, 68, 68, 0.2)', paddingTop: '1.2rem', marginTop: '0.2rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#ef4444' }}>Danger Zone</h4>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0 }}>
+                  Permanently delete your Campusly account and all saved academic schedules, notes, tasks, and files.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  style={{
+                    background: '#ef4444',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    alignSelf: 'flex-start',
+                    boxShadow: '0 2px 6px rgba(239, 68, 68, 0.15)'
+                  }}
+                >
+                  Delete My Account
+                </button>
+              </div>
             </div>
           </div>
         </div>

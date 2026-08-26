@@ -62,7 +62,7 @@ export const AIAssistant: React.FC = () => {
         {
           id: 'welcome',
           sender: 'assistant',
-          text: `Hi! I'm your AI Academic Companion. 📚\n\nAsk me any question based on your uploaded lecture notes, handouts, or study guides.\n\nYou can target queries to a specific subject using the dropdown, or scan all note documents at once!`
+          text: `Hi! I'm Campusly, your AI study buddy and friend! 🌸✨\n\nI'm here to help you study, explain difficult topics, keep you motivated, or just chat about student life! 📚💖\n\nIf you want to review your notes, just ask me about them—otherwise, feel free to say hello and chat about anything!`
         }
       ]);
     }
@@ -98,7 +98,8 @@ export const AIAssistant: React.FC = () => {
         },
         body: JSON.stringify({
           question: userQuestion,
-          subject_id: aiSubjectId || undefined
+          subject_id: aiSubjectId || undefined,
+          history: chatHistory.map(h => ({ sender: h.sender, text: h.text }))
         })
       });
 
@@ -171,7 +172,7 @@ export const AIAssistant: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>AI Study Companion</span>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-              <span className="ai-header-status" /> Active (RAG Indexer online)
+              <span className="ai-header-status" /> Active (Study Buddy online)
             </span>
           </div>
         </div>

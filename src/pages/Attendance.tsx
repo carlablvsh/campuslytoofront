@@ -295,7 +295,7 @@ export const Attendance: React.FC = () => {
                 {/* Subject Info Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <span className="badge" style={{ background: subject.color }}>{subject.code}</span>
+                    <span className="badge" style={{ background: subject.color, color: '#1a0b14' }}>{subject.code}</span>
                     <h3 style={{ fontSize: '1.2rem', fontWeight: 750, marginTop: '0.3rem' }}>{subject.name}</h3>
                   </div>
                   <span 
