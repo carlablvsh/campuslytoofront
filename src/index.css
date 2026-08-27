@@ -1959,13 +1959,18 @@ html:not([data-theme="dark"]) .deadline-item:nth-child(5n+3) { background: #f8f4
 html:not([data-theme="dark"]) .deadline-item:nth-child(5n+4) { background: #ebfaf4 !important; border: 1.5px solid #c7ebd7 !important; }
 html:not([data-theme="dark"]) .deadline-item:nth-child(5n+5) { background: #fff8f2 !important; border: 1.5px solid #ffe2cb !important; }
 
-/* 11. Timetable Day Columns & Classes */
-html:not([data-theme="dark"]) .page-timetable .day-column-body:nth-child(even) { background: #fffefb !important; }
-html:not([data-theme="dark"]) .page-timetable .day-column-body:nth-child(odd) { background: #fffcf8 !important; }
 html:not([data-theme="dark"]) .page-timetable .timetable-card {
-  background: var(--item-color) !important;
-  border: 1.5px solid rgba(0, 0, 0, 0.05) !important;
+  background: color-mix(in srgb, var(--item-color, #ff5e84) 12%, #ffffff 88%) !important;
+  border: 1px solid color-mix(in srgb, var(--item-color, #ff5e84) 25%, #ffffff 75%) !important;
+  border-left: 4.5px solid var(--item-color, var(--primary)) !important;
   color: #3c2429 !important;
+  box-shadow: 0 2px 8px rgba(60, 36, 41, 0.03) !important;
+}
+
+html:not([data-theme="dark"]) .page-timetable .timetable-card:hover {
+  background: color-mix(in srgb, var(--item-color, #ff5e84) 18%, #ffffff 82%) !important;
+  border-color: color-mix(in srgb, var(--item-color, #ff5e84) 38%, #ffffff 62%) !important;
+  box-shadow: 0 4px 12px rgba(60, 36, 41, 0.07) !important;
 }
 
 /* 12. Calendar day highlight */
