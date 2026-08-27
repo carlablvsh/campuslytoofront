@@ -307,10 +307,11 @@ export const CalendarView: React.FC = () => {
             is_moved: occ.is_moved
           });
         } else if (occ.type === 'event') {
+          const eventIcon = occ.event_type === 'work' ? '💼' : occ.event_type === 'study' ? '📚' : occ.event_type === 'extracurricular' ? '🎨' : occ.event_type === 'class_extra' ? '🏫' : '🌟';
           dateEvents.push({
             type: 'event',
             id: occ.id,
-            title: `${occ.event_type === 'work' ? '💼' : occ.event_type === 'study' ? '📚' : '🌟'} ${occ.title}`,
+            title: `${eventIcon} ${occ.title}`,
             time: occ.start_time,
             color: occ.subject_color || '#a8a29e'
           });
@@ -614,6 +615,7 @@ export const CalendarView: React.FC = () => {
                         >
                           <option value="study">📚 Study Session</option>
                           <option value="work">💼 Work / Job</option>
+                          <option value="extracurricular">🎨 Extracurricular / Club</option>
                           <option value="class_extra">🏫 Extra Class</option>
                           <option value="personal">🌟 Personal Event</option>
                           <option value="other">☕ Other</option>

@@ -575,6 +575,10 @@ export const Dashboard: React.FC = () => {
                       classIcon = <span style={{ fontSize: '0.85rem' }}>📚</span>;
                       iconBg = '#eefdf8';
                       iconColor = '#3ec9a5';
+                    } else if (c.event_type === 'extracurricular') {
+                      classIcon = <span style={{ fontSize: '0.85rem' }}>🎨</span>;
+                      iconBg = '#fdf0ff';
+                      iconColor = '#c850c0';
                     } else if (c.event_type === 'class_extra') {
                       classIcon = <span style={{ fontSize: '0.85rem' }}>🏫</span>;
                       iconBg = '#f5effc';
