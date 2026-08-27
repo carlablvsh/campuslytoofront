@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth, API_BASE_URL } from '../context/AuthContext';
-import { GraduationCap, Lock, Mail, User, ArrowRight, Key } from 'lucide-react';
+import { GraduationCap, Lock, Mail, User, ArrowRight, Key, ShieldCheck, RefreshCw } from 'lucide-react';
 
 interface AuthProps {
   onBackToLanding?: () => void;
@@ -18,22 +18,39 @@ const CuteBowSVG: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ 
 );
 
 export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = true }) => {
-  const { login, register, error, clearError } = useAuth();
+  const { login, register, verifyOTP, resendOTP, error, clearError } = useAuth();
   const [isLogin, setIsLogin] = useState<boolean>(initialIsLogin);
+  const [isVerifyOtp, setIsVerifyOtp] = useState<boolean>(false);
   const [isForgotPassword, setIsForgotPassword] = useState<boolean>(false);
   const [isResetPassword, setIsResetPassword] = useState<boolean>(false);
+
+  const [otpCode, setOtpCode] = useState<string>('');
   const [resetToken, setResetToken] = useState<string>('');
   const [newPassword, setNewPassword] = useState<string>('');
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   const [username, setUsername] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  
   const [loading, setLoading] = useState<boolean>(false);
+  const [resendLoading, setResendLoading] = useState<boolean>(false);
+  const [resendCooldown, setResendCooldown] = useState<number>(0);
+
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Resend cooldown timer effect
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const handleToggle = (loginState: boolean) => {
     setIsLogin(loginState);
+    setIsVerifyOtp(false);
     setIsForgotPassword(false);
     setIsResetPassword(false);
     setLocalError(null);
@@ -42,6 +59,7 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
     setUsername('');
     setEmail('');
     setPassword('');
+    setOtpCode('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,15 +71,64 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
     setSuccessMessage(null);
     
     if (isLogin) {
-      const ok = await login(email, password);
-      if (!ok) {
-        setSuccessMessage(null);
+      const res = await login(email, password);
+      if (!res.success) {
+        if (res.requiresVerification) {
+          setIsVerifyOtp(true);
+          setResendCooldown(60);
+          setSuccessMessage(res.message || 'Please enter the 6-digit verification code sent to your email.');
+        } else {
+          setLocalError(res.message || 'Invalid login details.');
+        }
       }
     } else {
-      await register(username, email, password);
+      const res = await register(username, email, password);
+      if (res.success) {
+        if (res.requiresVerification) {
+          setIsVerifyOtp(true);
+          setResendCooldown(60);
+          setSuccessMessage(res.message || 'Verification code sent to your email!');
+        }
+      } else {
+        setLocalError(res.message || 'Registration failed.');
+      }
     }
     
     setLoading(false);
+  };
+
+  const handleVerifyOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !otpCode || otpCode.length !== 6) return;
+
+    setLoading(true);
+    setLocalError(null);
+    setSuccessMessage(null);
+
+    const res = await verifyOTP(email, otpCode);
+    if (!res.success) {
+      setLocalError(res.message || 'Failed to verify 6-digit code.');
+    } else {
+      setSuccessMessage('Email verified successfully!');
+    }
+    setLoading(false);
+  };
+
+  const handleResendOtpClick = async () => {
+    if (resendCooldown > 0 || !email) return;
+
+    setResendLoading(true);
+    setLocalError(null);
+    setSuccessMessage(null);
+
+    const res = await resendOTP(email);
+    if (res.success) {
+      setSuccessMessage(res.message || 'A new verification code has been sent!');
+      setResendCooldown(60);
+    } else {
+      setLocalError(res.error || 'Failed to resend verification code.');
+    }
+    setResendLoading(false);
   };
 
   const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
@@ -103,7 +170,7 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
       const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: resetToken, newPassword })
+        body: JSON.stringify({ email, token: resetToken, newPassword })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -113,6 +180,9 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
         setIsResetPassword(false);
         setIsForgotPassword(false);
         setIsLogin(true);
+        setPassword('');
+        setResetToken('');
+        setNewPassword('');
       }
     } catch (err) {
       setLocalError('Cannot connect to server.');
@@ -185,7 +255,7 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
               ← Back to homepage
             </button>
           )}
-          {!isForgotPassword && !isResetPassword ? (
+          {!isVerifyOtp && !isForgotPassword && !isResetPassword ? (
             <div className="auth-tabs">
               <div 
                 className={`auth-tab ${isLogin ? 'active' : ''}`}
@@ -209,7 +279,11 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
               marginBottom: '1.2rem',
               textAlign: 'center'
             }}>
-              {isForgotPassword ? 'Reset password request' : 'Set your new password'}
+              {isVerifyOtp 
+                ? 'Email Verification' 
+                : isForgotPassword 
+                  ? 'Reset Password Request' 
+                  : 'Set Your New Password'}
             </h3>
           )}
 
@@ -225,8 +299,91 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
             </div>
           )}
 
+          {isVerifyOtp ? (
+            <form onSubmit={handleVerifyOtpSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              <div style={{ textAlign: 'center', marginBottom: '0.2rem' }}>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  background: 'var(--primary-glow)',
+                  color: 'var(--primary)',
+                  marginBottom: '0.5rem'
+                }}>
+                  <ShieldCheck size={24} />
+                </div>
+                <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  We sent a 6-digit verification code to <strong style={{ color: 'var(--text-primary)' }}>{email}</strong>
+                </p>
+              </div>
 
-          {isForgotPassword ? (
+              <div className="form-group">
+                <label htmlFor="otpCode" style={{ textAlign: 'center', display: 'block' }}>6-Digit Verification Code</label>
+                <input
+                  id="otpCode"
+                  type="text"
+                  maxLength={6}
+                  className="form-input"
+                  placeholder="123456"
+                  style={{
+                    textAlign: 'center',
+                    letterSpacing: '8px',
+                    fontSize: '1.5rem',
+                    fontWeight: 'bold',
+                    padding: '0.8rem',
+                    fontFamily: 'monospace'
+                  }}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                className="btn-primary" 
+                style={{ width: '100%', justifyContent: 'center', marginTop: '0.4rem', padding: '0.9rem' }}
+                disabled={loading || otpCode.length !== 6}
+              >
+                {loading ? 'Verifying...' : 'Verify & Continue'}
+                {!loading && <ArrowRight size={16} />}
+              </button>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                <button 
+                  type="button"
+                  onClick={handleResendOtpClick}
+                  disabled={resendCooldown > 0 || resendLoading}
+                  style={{ 
+                    background: 'transparent', 
+                    border: 'none', 
+                    color: resendCooldown > 0 ? 'var(--text-muted)' : 'var(--primary)', 
+                    fontSize: '0.8rem', 
+                    fontWeight: 700, 
+                    cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem'
+                  }}
+                >
+                  <RefreshCw size={14} className={resendLoading ? 'spin' : ''} />
+                  {resendCooldown > 0 ? `Resend Code in ${resendCooldown}s` : 'Resend Code'}
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => { setIsVerifyOtp(false); setLocalError(null); setSuccessMessage(null); }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Back to Sign In
+                </button>
+              </div>
+            </form>
+          ) : isForgotPassword ? (
             <form onSubmit={handleForgotPasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <div className="form-group">
                 <label htmlFor="email">Email Address</label>
@@ -261,21 +418,21 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
                 style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem', padding: '0.9rem' }}
                 disabled={loading}
               >
-                {loading ? 'Sending...' : 'Request Reset Token'}
+                {loading ? 'Sending...' : 'Request Reset Code'}
                 {!loading && <ArrowRight size={16} />}
               </button>
             </form>
           ) : isResetPassword ? (
             <form onSubmit={handleResetPasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <div className="form-group">
-                <label htmlFor="resetToken">Reset Token</label>
+                <label htmlFor="resetToken">Reset Code / Token</label>
                 <div style={{ position: 'relative' }}>
                   <Key size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                   <input
                     id="resetToken"
                     type="text"
                     className="form-input"
-                    placeholder="Paste your reset token"
+                    placeholder="6-Digit Code or Reset Token"
                     style={{ paddingLeft: '40px', width: '100%' }}
                     value={resetToken}
                     onChange={(e) => setResetToken(e.target.value)}
@@ -307,7 +464,7 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
                   onClick={() => { setIsResetPassword(false); setIsForgotPassword(true); setLocalError(null); }}
                   style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
                 >
-                  ← Request new token
+                  ← Request new code
                 </button>
                 <button 
                   type="button"
@@ -419,3 +576,4 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
     </div>
   );
 };
+

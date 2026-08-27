@@ -11,13 +11,22 @@ interface User {
   hasGeminiKey?: boolean;
 }
 
+interface AuthResult {
+  success: boolean;
+  requiresVerification?: boolean;
+  email?: string;
+  message?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (username: string, email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<AuthResult>;
+  register: (username: string, email: string, password: string) => Promise<AuthResult>;
+  verifyOTP: (email: string, otp: string) => Promise<AuthResult>;
+  resendOTP: (email: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   logout: () => void;
   clearError: () => void;
   updateUser: (newUser: User) => void;
@@ -68,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     restoreSession();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<AuthResult> => {
     setError(null);
     try {
       const res = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -80,23 +89,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.requiresVerification) {
+          return { success: false, requiresVerification: true, email: data.email, message: data.error };
+        }
         setError(data.error || 'Invalid login details.');
-        return false;
+        return { success: false, message: data.error };
       }
 
       setToken(data.token);
       setUser(data.user);
       localStorage.setItem('campusly_token', data.token);
       localStorage.setItem('campusly_user', JSON.stringify(data.user));
-      return true;
+      return { success: true };
     } catch (err) {
       console.error('Login request error:', err);
       setError('Cannot connect to authentication server.');
-      return false;
+      return { success: false, message: 'Cannot connect to authentication server.' };
     }
   };
 
-  const register = async (username: string, email: string, password: string): Promise<boolean> => {
+  const register = async (username: string, email: string, password: string): Promise<AuthResult> => {
     setError(null);
     try {
       const res = await fetch(`${API_BASE_URL}/auth/register`, {
@@ -109,18 +121,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (!res.ok) {
         setError(data.error || 'Failed to create student account.');
-        return false;
+        return { success: false, message: data.error };
       }
 
-      setToken(data.token);
-      setUser(data.user);
-      localStorage.setItem('campusly_token', data.token);
-      localStorage.setItem('campusly_user', JSON.stringify(data.user));
-      return true;
+      if (data.requiresVerification) {
+        return { success: true, requiresVerification: true, email: data.email, message: data.message };
+      }
+
+      if (data.token && data.user) {
+        setToken(data.token);
+        setUser(data.user);
+        localStorage.setItem('campusly_token', data.token);
+        localStorage.setItem('campusly_user', JSON.stringify(data.user));
+      }
+      return { success: true };
     } catch (err) {
       console.error('Registration request error:', err);
       setError('Cannot connect to authentication server.');
-      return false;
+      return { success: false, message: 'Cannot connect to authentication server.' };
+    }
+  };
+
+  const verifyOTP = async (email: string, otp: string): Promise<AuthResult> => {
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Failed to verify 6-digit code.');
+        return { success: false, message: data.error };
+      }
+
+      if (data.token && data.user) {
+        setToken(data.token);
+        setUser(data.user);
+        localStorage.setItem('campusly_token', data.token);
+        localStorage.setItem('campusly_user', JSON.stringify(data.user));
+      }
+      return { success: true, message: data.message };
+    } catch (err) {
+      console.error('Verify OTP error:', err);
+      setError('Cannot connect to authentication server.');
+      return { success: false, message: 'Cannot connect to authentication server.' };
+    }
+  };
+
+  const resendOTP = async (email: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        return { success: false, error: data.error || 'Failed to resend code.' };
+      }
+
+      return { success: true, message: data.message };
+    } catch (err) {
+      return { success: false, error: 'Cannot connect to server.' };
     }
   };
 
@@ -139,7 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, error, login, register, logout, clearError, updateUser }}>
+    <AuthContext.Provider value={{ user, token, loading, error, login, register, verifyOTP, resendOTP, logout, clearError, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
