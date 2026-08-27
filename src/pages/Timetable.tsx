@@ -679,7 +679,7 @@ export const Timetable: React.FC = () => {
           style={{ borderColor: '#ff7899', color: '#ff7899', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
         >
           <CalendarIcon size={14} />
-          Manage Vacation Breaks
+          Manage Breaks
         </button>
         <button className="btn-primary" onClick={() => {
           setEditingClassId(null);
@@ -1149,7 +1149,7 @@ export const Timetable: React.FC = () => {
         <div className="modal-overlay" onClick={() => setShowBreaksModal(false)}>
           <div className="modal-content" style={{ maxWidth: '520px', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Manage Vacation Breaks 🏖️</h3>
+              <h3>Manage Breaks</h3>
               <button className="modal-close" onClick={() => setShowBreaksModal(false)}>
                 <X size={20} />
               </button>
