@@ -306,7 +306,7 @@ export const Attendance: React.FC = () => {
             onClick={() => setFilterMode('all')}
             style={{ padding: '0.45rem 1rem', fontSize: '0.8rem' }}
           >
-            View All Subjects 📚
+            View All Subjects
           </button>
         </div>
       ) : (
@@ -336,7 +336,7 @@ export const Attendance: React.FC = () => {
                       <span className="badge" style={{ background: subject.color, color: '#1a0b14' }}>{subject.code}</span>
                       {filterMode === 'today' && todaySubjectTimes[subject.id] && (
                         <span className="badge" style={{ background: 'var(--bg-app)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', fontSize: '0.7rem', fontWeight: 700 }}>
-                          🕒 {todaySubjectTimes[subject.id].timeRange}
+                          {todaySubjectTimes[subject.id].timeRange}
                         </span>
                       )}
                     </div>
@@ -492,7 +492,7 @@ export const Attendance: React.FC = () => {
       {/* Relocated: Log Past Attendance Card */}
       {stats.length > 0 && (
         <div className="section-card" style={{ padding: '1.2rem 1.6rem', background: 'var(--bg-surface)' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '0.8rem', color: 'var(--text-primary)' }}>Log Past Attendance ✦</h3>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '0.8rem', color: 'var(--text-primary)' }}>Log Past Attendance</h3>
           <form onSubmit={handleLogPastAttendance} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <div className="form-group" style={{ margin: 0, minWidth: '160px', flex: 1 }}>
               <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Course / Subject</label>

@@ -663,7 +663,7 @@ export const Timetable: React.FC = () => {
           style={{ borderColor: '#ff7899', color: '#ff7899', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
         >
           <Sparkles size={14} />
-          Import with AI ✦
+          Import with AI
         </button>
         <button 
           className="btn-secondary" 
@@ -679,7 +679,7 @@ export const Timetable: React.FC = () => {
           style={{ borderColor: '#ff7899', color: '#ff7899', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
         >
           <CalendarIcon size={14} />
-          Manage Vacation Breaks 🏖️
+          Manage Vacation Breaks
         </button>
         <button className="btn-primary" onClick={() => {
           setEditingClassId(null);
@@ -1245,7 +1245,7 @@ export const Timetable: React.FC = () => {
                     style={{ width: '100%', justifyContent: 'center', marginTop: '0.4rem', padding: '0.5rem', background: '#ff4d6d', borderColor: '#ff4d6d' }}
                     disabled={breaksLoading}
                   >
-                    Add Break Period 🏖️
+                    Add Break Period
                   </button>
                 </form>
               </div>
@@ -1270,7 +1270,7 @@ export const Timetable: React.FC = () => {
             {!user?.hasGeminiKey ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '2rem 1rem', gap: '1.2rem' }}>
                 <Bot size={40} style={{ color: '#ff7899', marginLeft: 'auto', marginRight: 'auto' }} />
-                <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#2e1622', margin: 0 }}>Connect Your Gemini Key ✦</h4>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#2e1622', margin: 0 }}>Connect Your Gemini Key</h4>
                 <p style={{ fontSize: '0.8rem', color: '#8c707a', lineHeight: 1.5, margin: 0 }}>
                   Campusly uses Gemini for its AI-powered timetable import. Connect your own Gemini API key in settings to analyze your timetable and extract classes automatically.
                 </p>
@@ -1283,7 +1283,7 @@ export const Timetable: React.FC = () => {
                   className="btn-primary"
                   style={{ padding: '0.55rem 1.2rem', borderRadius: '20px', display: 'inline-flex', alignSelf: 'center' }}
                 >
-                  Setup Gemini API Key 🎀
+                  Setup Gemini API Key
                 </button>
               </div>
             ) : (
@@ -1294,7 +1294,7 @@ export const Timetable: React.FC = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1rem', gap: '1rem' }}>
                     <div className="spinner" style={{ borderTopColor: 'var(--primary)' }}></div>
                     <div style={{ textAlign: 'center' }}>
-                      <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Analyzing your timetable... 🌸</p>
+                      <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Analyzing your timetable...</p>
                       <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>Gemini is reading the days, slots, and branch-specific courses. This may take up to a minute.</p>
                     </div>
                   </div>
@@ -1517,7 +1517,7 @@ export const Timetable: React.FC = () => {
                   disabled={importLoading}
                   style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                 >
-                  {importLoading ? 'Saving...' : 'Confirm & Save Schedule ✦'}
+                  {importLoading ? 'Saving...' : 'Confirm & Save Schedule'}
                 </button>
               </div>
             </div>

@@ -522,33 +522,53 @@ export const CalendarView: React.FC = () => {
         {/* Days Grid Cells */}
         {daysGrid.map((cell, idx) => {
           const events = getEventsForDate(cell.date);
+          const MAX_VISIBLE = 3;
+          const visibleEvents = events.slice(0, MAX_VISIBLE);
+          const overflowCount = events.length - MAX_VISIBLE;
+
           return (
             <div 
               key={idx} 
               className={`calendar-cell ${!cell.isCurrentMonth ? 'other-month' : ''} ${cell.isToday ? 'is-today' : ''}`}
               onClick={() => handleDayClick(cell.date)}
             >
-              <span className="calendar-day-number">{cell.date.getDate()}</span>
+              <div className="calendar-cell-header">
+                <span className="calendar-day-number">{cell.date.getDate()}</span>
+              </div>
               
               <div className="calendar-event-pills">
-                {events.map((evt, eIdx) => (
+                {visibleEvents.map((evt, eIdx) => (
                   <div 
                     key={eIdx} 
                     className={`calendar-pill ${evt.type === 'note' ? 'note-pill' : ''}`}
                     style={{ 
-                      background: evt.type === 'class' 
-                        ? `${evt.color}bb` 
-                        : evt.type === 'note' 
-                          ? undefined // uses css note-pill colors
-                          : evt.color,
+                      borderLeftColor: evt.color,
                       textDecoration: evt.status === 'completed' ? 'line-through' : 'none',
                       opacity: evt.status === 'completed' ? 0.6 : 1
                     }}
                     title={`${evt.type === 'note' ? `Note: ${evt.title}` : evt.title} ${evt.time ? `(${evt.time})` : ''}`}
                   >
-                    {evt.type === 'note' ? '📌 ' : ''}{evt.time && `${evt.time} `}{evt.title}
+                    <span 
+                      style={{ 
+                        width: '5px', 
+                        height: '5px', 
+                        borderRadius: '50%', 
+                        background: evt.color, 
+                        flexShrink: 0,
+                        display: evt.type === 'note' ? 'none' : 'inline-block' 
+                      }} 
+                    />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {evt.time ? `${evt.time} ` : ''}{evt.title}
+                    </span>
                   </div>
                 ))}
+
+                {overflowCount > 0 && (
+                  <div className="calendar-pill-more">
+                    +{overflowCount} more
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -561,7 +581,7 @@ export const CalendarView: React.FC = () => {
           <div className="modal-content" style={{ maxWidth: '480px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>
-                Day Schedule ✦
+                Day Schedule
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500, marginTop: '0.15rem' }}>
                   {selectedDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </div>

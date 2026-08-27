@@ -1030,19 +1030,19 @@ export const StudyRoom: React.FC = () => {
                 className={`mode-tab ${timerMode === 'focus' ? 'active' : ''}`}
                 onClick={() => setTimerMode('focus')}
               >
-                🌸 Focus
+                Focus
               </button>
               <button 
                 className={`mode-tab ${timerMode === 'short' ? 'active' : ''}`}
                 onClick={() => setTimerMode('short')}
               >
-                ✨ Short Break
+                Short Break
               </button>
               <button 
                 className={`mode-tab ${timerMode === 'long' ? 'active' : ''}`}
                 onClick={() => setTimerMode('long')}
               >
-                🍵 Long Break
+                Long Break
               </button>
             </div>
 
@@ -1103,9 +1103,9 @@ export const StudyRoom: React.FC = () => {
                   {formatTime(timeLeft)}
                 </div>
                 <p className="timer-status">
-                  {timerMode === 'focus' && 'time to block out distractions... ✦'}
-                  {timerMode === 'short' && 'stretch, drink some water! 🌸'}
-                  {timerMode === 'long' && 'brew a cup of tea. 🍵'}
+                  {timerMode === 'focus' && 'time to block out distractions...'}
+                  {timerMode === 'short' && 'stretch, drink some water!'}
+                  {timerMode === 'long' && 'brew a cup of tea.'}
                 </p>
 
                 <div className="timer-controls">
@@ -1148,7 +1148,7 @@ export const StudyRoom: React.FC = () => {
             <div className="notepad-container">
               <textarea
                 className="paper-textarea"
-                placeholder="Type your quick study notes or scratchpad thoughts... (autosaves) ✍️"
+                placeholder="Type your quick study notes or scratchpad thoughts... (autosaves)"
                 value={noteContent}
                 onChange={handleNoteChange}
               />
@@ -1287,7 +1287,6 @@ export const StudyRoom: React.FC = () => {
             <div className="checklist-items">
               {tasks.length === 0 ? (
                 <div className="checklist-empty">
-                  <span>✨</span>
                   <p>Checklist is empty.</p>
                 </div>
               ) : (

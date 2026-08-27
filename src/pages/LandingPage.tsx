@@ -376,7 +376,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             color: '#ff7899',
             fontFamily: 'var(--font-serif)'
           }}
-          title="Click to reveal Sidebar preview 🎀"
+          title="Click to reveal Sidebar preview"
         >
           <div style={{
             display: 'flex',
@@ -390,7 +390,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <GraduationCap size={16} />
           </div>
           <span>Campusly</span>
-          <CuteBowSVG size={16} style={{ alignSelf: 'flex-start', marginTop: '-3px' }} />
         </div>
 
         {/* Center menu links */}
@@ -553,7 +552,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <Sparkles size={14} /> Pricing Plans
             </span>
             <h1 style={{ fontSize: '3rem', fontWeight: 900, fontFamily: 'var(--font-serif)', color: '#2e1622', margin: '0 0 1rem 0' }}>
-              Cozy plans for bright minds 🌸
+              Cozy plans for bright minds
             </h1>
             <p style={{ color: '#8c707a', fontSize: '1.05rem', maxWidth: '600px', margin: '0 auto', lineHeight: 1.6 }}>
               Whether you want a simple tracker or advanced planning tools, we have a plan crafted for your success.
@@ -746,7 +745,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <CuteBowSVG size={14} /> Help & Support
             </span>
             <h1 style={{ fontSize: '3rem', fontWeight: 900, fontFamily: 'var(--font-serif)', color: '#2e1622', margin: '0 0 1rem 0' }}>
-              We're here to help! 🌸
+              We're here to help!
             </h1>
             <p style={{ color: '#8c707a', fontSize: '1.05rem', maxWidth: '600px', margin: '0 auto', lineHeight: 1.6 }}>
               Have questions, feedback, or need premium billing support? Drop us a message and our cozy support team will get back to you shortly!
@@ -861,10 +860,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         cursor: 'pointer'
                       }}
                     >
-                      <option value="General Enquiry">General Enquiry 🌸</option>
-                      <option value="Feature Feedback">Feature Feedback 💡</option>
-                      <option value="Bug Report">Report a Bug 🐞</option>
-                      <option value="Billing / Pro Account">Billing & Scholar Pro Help 💎</option>
+                      <option value="General Enquiry">General Enquiry</option>
+                      <option value="Feature Feedback">Feature Feedback</option>
+                      <option value="Bug Report">Report a Bug</option>
+                      <option value="Billing / Pro Account">Billing & Scholar Pro Help</option>
                     </select>
                   </div>
 
@@ -925,7 +924,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 textAlign: 'left',
                 position: 'relative'
               }} className="landing-hover-card">
-                <span style={{ fontSize: '1.5rem', position: 'absolute', top: '15px', right: '15px' }}>🌸</span>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'var(--font-serif)', color: '#2e1622', marginBottom: '0.75rem' }}>Cozy Study Tips</h3>
                 <p style={{ fontSize: '0.82rem', color: '#6e5261', lineHeight: 1.5, margin: 0 }}>
                   Did you know? Setting up overlapping timetable classes triggers conflicts detection automatically. Make sure to double check your schedule on the Timetable pane before logging attendance!
@@ -984,7 +982,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           }}>
             Your all-in-one<br />
             <span style={{ color: '#ff7899' }}>academic</span><br />
-            companion <span style={{ color: '#ff7899' }}>✨</span>
+            companion
           </h1>
 
           <p style={{ 
@@ -1045,7 +1043,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&q=80" alt="Student" style={{ width: '28px', height: '28px', borderRadius: '50%', border: '2px solid #ffffff', marginLeft: '-8px', objectFit: 'cover' }} />
             </div>
             <span style={{ fontSize: '0.78rem', color: '#8c707a', fontWeight: 600 }}>
-              Join 10,000+ students already using Campusly 💖
+              Join 10,000+ students already using Campusly
             </span>
           </div>
         </div>
@@ -1183,9 +1181,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             position: 'relative' 
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingBottom: '0.8rem', width: '100%' }}>
-              <span style={{ fontSize: '0.62rem', background: '#fff', border: '1px solid #ffd1dc', padding: '0.35rem 0.65rem', borderRadius: '15px 15px 15px 0', fontWeight: 700, color: 'var(--primary)' }}>📅 Mon: Math Class (paused for break)</span>
-              <span style={{ fontSize: '0.62rem', background: '#fff', border: '1px solid #ffd1dc', padding: '0.35rem 0.65rem', borderRadius: '15px 15px 15px 0', fontWeight: 700, color: 'var(--primary)', marginLeft: '1.2rem' }}>📝 Wed: Physics Lab Assignment due</span>
-              <span style={{ fontSize: '0.62rem', background: '#fff', border: '1px solid #ffd1dc', padding: '0.35rem 0.65rem', borderRadius: '15px 15px 15px 0', fontWeight: 700, color: 'var(--primary)' }}>💼 Fri: Part-time job shift (14:00 - 18:00)</span>
+              <span style={{ fontSize: '0.62rem', background: '#fff', border: '1px solid #ffd1dc', padding: '0.35rem 0.65rem', borderRadius: '15px 15px 15px 0', fontWeight: 700, color: 'var(--primary)' }}>Mon: Math Class (paused for break)</span>
+              <span style={{ fontSize: '0.62rem', background: '#fff', border: '1px solid #ffd1dc', padding: '0.35rem 0.65rem', borderRadius: '15px 15px 15px 0', fontWeight: 700, color: 'var(--primary)', marginLeft: '1.2rem' }}>Wed: Physics Lab Assignment due</span>
+              <span style={{ fontSize: '0.62rem', background: '#fff', border: '1px solid #ffd1dc', padding: '0.35rem 0.65rem', borderRadius: '15px 15px 15px 0', fontWeight: 700, color: 'var(--primary)' }}>Fri: Part-time job shift (14:00 - 18:00)</span>
             </div>
           </div>
         </div>
@@ -1252,20 +1250,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       }}>
         <div style={{ marginBottom: '2.5rem' }}>
           <h2 style={{ fontSize: '2.1rem', fontWeight: 800, fontFamily: 'var(--font-serif)', color: '#2e1622', margin: 0 }}>
-            Loved by students like you 💖
+            Loved by students like you
           </h2>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }} className="responsive-grid">
           {[
             {
-              text: "Campusly has seriously changed the way I manage my academics. Everything is so organized and cute! I love it! 💝",
+              text: "Campusly has seriously changed the way I manage my academics. Everything is so organized and easy to use!",
               name: "Diya K.",
               sub: "2nd Year, B.Tech",
               img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&q=80"
             },
             {
-              text: "The Study Room with the Pomodoro timer and Spotify integration keeps me totally locked in during exam prep! ☕",
+              text: "The Study Room with the Pomodoro timer and Spotify integration keeps me totally locked in during exam prep!",
               name: "Arjun M.",
               sub: "3rd Year, B.Sc",
               img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=64&q=80"
@@ -1372,7 +1370,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <span>•</span>
           <span style={{ color: '#ff7899', fontWeight: 600 }}>Your Academic Companion</span>
         </div>
-        <div>Made with 💖 for a cozy campus life experience.</div>
+        <div>Made for a cozy campus life experience.</div>
       </footer>
 
     </div>

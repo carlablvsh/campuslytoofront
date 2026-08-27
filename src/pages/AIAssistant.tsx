@@ -62,7 +62,7 @@ export const AIAssistant: React.FC = () => {
         {
           id: 'welcome',
           sender: 'assistant',
-          text: `Hi! I'm Campusly, your AI study buddy and friend! 🌸✨\n\nI'm here to help you study, explain difficult topics, keep you motivated, or just chat about student life! 📚💖\n\nIf you want to review your notes, just ask me about them—otherwise, feel free to say hello and chat about anything!`
+          text: `Hi! I'm Campusly, your AI study buddy and friend!\n\nI'm here to help you study, explain difficult topics, keep you motivated, or just chat about student life!\n\nIf you want to review your notes, just ask me about them—otherwise, feel free to say hello and chat about anything!`
         }
       ]);
     }
@@ -166,7 +166,7 @@ export const AIAssistant: React.FC = () => {
       <div className="fade-in ai-workspace-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
         <div className="landing-hover-card" style={{ maxWidth: '480px', padding: '2.5rem 2rem', textAlign: 'center', background: '#ffffff', border: '1.5px solid #ff7899', borderRadius: '24px', boxShadow: '0 8px 24px rgba(255, 94, 132, 0.05)' }}>
           <Bot size={44} style={{ color: '#ff7899', marginBottom: '1rem', marginLeft: 'auto', marginRight: 'auto' }} />
-          <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#2e1622', marginBottom: '0.8rem' }}>Connect Your Gemini Key ✦</h3>
+          <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#2e1622', marginBottom: '0.8rem' }}>Connect Your Gemini Key</h3>
           <p style={{ fontSize: '0.82rem', color: '#8c707a', lineHeight: 1.5, marginBottom: '1.5rem' }}>
             Campusly's AI Study Companion requires your own Gemini API key to run. This keeps Campusly mostly free and avoids usage limits!
           </p>
@@ -178,7 +178,7 @@ export const AIAssistant: React.FC = () => {
             className="btn-primary"
             style={{ padding: '0.65rem 1.4rem', borderRadius: '20px', display: 'inline-flex', alignSelf: 'center' }}
           >
-            Setup Gemini API Key 🎀
+            Setup Gemini API Key
           </button>
         </div>
       </div>

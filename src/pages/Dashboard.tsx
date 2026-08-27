@@ -147,23 +147,6 @@ const CuteExamsCalendar: React.FC = () => (
   </svg>
 );
 
-const CuteDaisyFlower: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 16, style }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" style={{ overflow: 'visible', ...style }}>
-    <circle cx="12" cy="7" r="4.5" fill="#ffd1dc" />
-    <circle cx="7" cy="12" r="4.5" fill="#ffd1dc" />
-    <circle cx="17" cy="12" r="4.5" fill="#ffd1dc" />
-    <circle cx="9.5" cy="17" r="4.5" fill="#ffd1dc" />
-    <circle cx="14.5" cy="17" r="4.5" fill="#ffd1dc" />
-    <circle cx="12" cy="12" r="3.5" fill="#fef08a" />
-  </svg>
-);
-
-const CuteMiniStar: React.FC<{ size?: number; color?: string; style?: React.CSSProperties }> = ({ size = 12, color = '#fef08a', style }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" style={{ overflow: 'visible', ...style }}>
-    <path d="M12,0 L15,9 L24,12 L15,15 L12,24 L9,15 L0,12 L9,9 Z" fill={color} />
-  </svg>
-);
-
 const PlannerBinderSpirals: React.FC = () => (
   <div style={{
     position: 'absolute',
@@ -376,9 +359,8 @@ export const Dashboard: React.FC = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <h2 style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              {greeting}, {user?.username} 🌙
+              {greeting}, {user?.username}
             </h2>
-            <CuteMiniStar size={16} style={{ animation: 'bounce 2.5s infinite', alignSelf: 'center', marginTop: '4px' }} />
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '0.25rem 0 0 0', fontWeight: 500 }}>
             Here's your <span style={{ color: 'var(--primary)', fontWeight: 600 }}>cozy</span> academic overview for today!
@@ -390,18 +372,14 @@ export const Dashboard: React.FC = () => {
             fontSize: '0.74rem', 
             color: 'var(--text-secondary)', 
             fontStyle: 'italic', 
-            display: 'flex', 
+            display: 'inline-flex', 
             alignItems: 'center', 
-            gap: '0.35rem',
             background: 'var(--primary-glow)',
             padding: '0.3rem 0.8rem',
-            borderRadius: '15px',
-            alignSelf: 'flex-start',
+            borderRadius: '12px',
             border: '1px solid rgba(255, 94, 132, 0.08)'
           }}>
-            <span>✨</span>
-            <span style={{ fontWeight: 600 }}>Cozy reminder: "Small steady steps lead to beautiful changes. Be kind to yourself today."</span>
-            <CuteDaisyFlower size={10} style={{ marginLeft: '0.2rem' }} />
+            <span style={{ fontWeight: 600 }}>"Small steady steps lead to beautiful changes. Be kind to yourself today."</span>
           </div>
         </div>
         <div style={{ flexShrink: 0 }}>
@@ -422,7 +400,6 @@ export const Dashboard: React.FC = () => {
           color: '#ff4d6d',
           boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
         }}>
-          <span>🏖️</span>
           <div>
             <strong style={{ color: '#ff4d6d' }}>Vacation Break Active: {data.activeBreak.name}</strong>
             <span style={{ marginLeft: '0.4rem', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
@@ -515,7 +492,6 @@ export const Dashboard: React.FC = () => {
           <div className="section-card" style={{ padding: '1.4rem', borderRadius: '12px', borderLeft: '5px solid var(--primary)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <CuteDaisyFlower size={14} style={{ animation: 'spin 10s linear infinite' }} />
                 <span>Today's Academic Flow</span>
               </h3>
               <button 
@@ -542,7 +518,7 @@ export const Dashboard: React.FC = () => {
 
             {data.classesToday.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                <p style={{ fontWeight: 600 }}>No classes scheduled for today. Enjoy a quiet study break! 📚</p>
+                <p style={{ fontWeight: 600 }}>No classes scheduled for today. Enjoy a quiet study break!</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', position: 'relative', paddingLeft: '1.3rem', marginTop: '0.4rem' }}>
@@ -707,8 +683,8 @@ export const Dashboard: React.FC = () => {
             {/* COLUMN 1: UPCOMING TASKS */}
             <div className="section-card" style={{ padding: '1rem', borderRadius: '12px', borderTop: '4px solid var(--purple-text)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.7rem' }}>
-                <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <span>☑️</span> Upcoming Tasks
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', margin: 0 }}>
+                  Upcoming Tasks
                 </h3>
                 <span 
                   onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'tasks' }))}
@@ -721,7 +697,7 @@ export const Dashboard: React.FC = () => {
               <div className="deadlines-checklist" style={{ gap: '0.4rem' }}>
                 {data.upcomingAssignments.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '1.5rem 1rem', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                    <p style={{ fontWeight: 600, margin: 0 }}>All clear! No tasks. 🌸</p>
+                    <p style={{ fontWeight: 600, margin: 0 }}>All clear! No tasks.</p>
                   </div>
                 ) : (
                   data.upcomingAssignments.slice(0, 3).map(item => {
@@ -771,8 +747,8 @@ export const Dashboard: React.FC = () => {
             {/* COLUMN 2: EXAMS AHEAD */}
             <div className="section-card" style={{ padding: '1rem', borderRadius: '12px', borderTop: '4px solid #8b5cf6' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.7rem' }}>
-                <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <span>⭐️</span> Exams Ahead
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-serif)', margin: 0 }}>
+                  Exams Ahead
                 </h3>
                 <span 
                   onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'exams' }))}
@@ -787,7 +763,7 @@ export const Dashboard: React.FC = () => {
                   <div style={{ textAlign: 'center', padding: '0.8rem 0.5rem 0.5rem 0.5rem' }}>
                     <CuteExamsCalendar />
                     <p style={{ fontWeight: 700, fontSize: '0.75rem', margin: '0.4rem 0 0.15rem 0', color: 'var(--text-primary)' }}>No upcoming exams</p>
-                    <p style={{ fontSize: '0.62rem', color: 'var(--text-muted)', margin: 0 }}>You're all caught up! Enjoy your free time 🎀</p>
+                    <p style={{ fontSize: '0.62rem', color: 'var(--text-muted)', margin: 0 }}>You're all caught up! Enjoy your free time</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -862,9 +838,6 @@ export const Dashboard: React.FC = () => {
                     d="M 0 35 C 30 15, 50 45, 80 20 C 110 5, 130 50, 160 25 C 180 15, 190 30, 200 20 L 200 60 L 0 60 Z" 
                     fill="url(#pink-wave-grad)" 
                   />
-                  {/* Small Sparkles */}
-                  <path d="M15,10 L16.5,11.5 L18,12 L16.5,12.5 L15,14 L13.5,12.5 L12,12 L13.5,11.5 Z" fill="#ff7899" opacity="0.6" />
-                  <path d="M125,12 L126.5,13.5 L128,14 L126.5,14.5 L125,16 L123.5,14.5 L122,14 L123.5,13.5 Z" fill="#ff7899" opacity="0.6" />
                 </svg>
               </div>
 
@@ -899,10 +872,10 @@ export const Dashboard: React.FC = () => {
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', maxWidth: '60%' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 800, fontFamily: 'var(--font-serif)', color: 'inherit' }}>
-                Study Sticker ✦
+                Study Sticker
               </span>
               <span style={{ fontSize: '0.74rem', color: 'inherit', opacity: 0.85, fontWeight: 500, lineHeight: 1.3 }}>
-                Consistency today, success tomorrow 💖
+                Consistency today, success tomorrow
               </span>
             </div>
             <div style={{ flexShrink: 0 }}>
@@ -932,9 +905,6 @@ export const Dashboard: React.FC = () => {
                 <rect x="12" y="61" width="36" height="6" rx="1.5" fill="#ffd1dc" />
                 <line x1="15" y1="58" x2="45" y2="58" stroke="#a855f7" strokeWidth="0.8" />
                 <line x1="12" y1="64" x2="48" y2="64" stroke="#ff8da1" strokeWidth="0.8" />
-                
-                {/* Small heart bubble */}
-                <path d="M48,35 C48,32 45,30 43,32 C41,30 38,32 38,35 C38,39 43,42 43,42 C43,42 48,39 48,35" fill="#f43f5e" opacity="0.75" />
               </svg>
             </div>
           </div>
@@ -952,19 +922,6 @@ export const Dashboard: React.FC = () => {
               transform: 'rotate(0.5deg)'
             }}
           >
-            {/* Cute pushpin illustration on top */}
-            <span style={{ 
-              position: 'absolute', 
-              top: '-12px', 
-              left: '50%', 
-              transform: 'translateX(-50%)', 
-              fontSize: '1.1rem', 
-              filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.15))',
-              zIndex: 10
-            }}>
-              📌
-            </span>
-
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', borderBottom: '1px dashed rgba(230, 193, 92, 0.3)', paddingBottom: '0.35rem' }}>
               <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#7d663b', fontFamily: 'var(--font-serif)', margin: 0, letterSpacing: '0.2px' }}>
                 Reminders Board
@@ -980,7 +937,7 @@ export const Dashboard: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
               {remindersList.length === 0 ? (
                 <div style={{ fontSize: '0.72rem', color: '#7d663b', textAlign: 'center', fontStyle: 'italic', padding: '0.6rem 0' }}>
-                  All clear! Enjoy your day 🌸
+                  All clear! Enjoy your day
                 </div>
               ) : (
                 remindersList.slice(0, 3).map((rem, i) => (
@@ -995,7 +952,6 @@ export const Dashboard: React.FC = () => {
                       borderRadius: '6px'
                     }}
                   >
-                    <span style={{ fontSize: '0.75rem', flexShrink: 0 }}>⚠️</span>
                     <span style={{ fontSize: '0.7rem', color: '#7d663b', fontWeight: 600, lineHeight: '1.25' }}>
                       {rem}
                     </span>
@@ -1012,12 +968,10 @@ export const Dashboard: React.FC = () => {
       {/* 4. BOTTOM RIBBON BANNER */}
       <div className="bottom-ribbon-banner" style={{ filter: 'drop-shadow(0 2px 3px rgba(255, 94, 132, 0.05))', position: 'relative' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-          <span style={{ fontSize: '1rem' }}>💝</span>
           <span style={{ fontSize: '0.74rem', fontStyle: 'italic', color: 'inherit', fontWeight: 600 }}>
-            Small steps every day lead to big changes. ✦
+            Small steps every day lead to big changes.
           </span>
         </div>
-        <span style={{ fontSize: '0.95rem' }}>💖</span>
       </div>
 
     </div>

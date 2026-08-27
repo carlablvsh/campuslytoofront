@@ -119,7 +119,7 @@ export const CampusXP: React.FC = () => {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <div style={{ color: 'var(--text-secondary)' }}>Loading Campus XP progression... ✧</div>
+        <div style={{ color: 'var(--text-secondary)' }}>Loading Campus XP progression...</div>
       </div>
     );
   }
@@ -176,7 +176,7 @@ export const CampusXP: React.FC = () => {
               </span>
             </div>
             <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '0.4rem', fontFamily: 'var(--font-serif)' }}>
-              Campus XP Progression ✦
+              Campus XP Progression
             </h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem', maxWidth: '520px' }}>
               Earn XP organically as you plan, attend scheduled lectures, complete assignments, and focus in the Study Room.

@@ -7,16 +7,6 @@ interface AuthProps {
   initialIsLogin?: boolean;
 }
 
-const CuteBowSVG: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 14, style }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ overflow: 'visible', ...style }}>
-    <path d="M12 12 C8 6, 3 8, 5 12 C7 16, 11 13, 12 12 Z" fill="#ffd1dc" stroke="#ff7899" strokeWidth="1.5" />
-    <path d="M12 12 C16 6, 21 8, 19 12 C17 16, 13 13, 12 12 Z" fill="#ffd1dc" stroke="#ff7899" strokeWidth="1.5" />
-    <circle cx="12" cy="12" r="2.5" fill="#ff7899" stroke="#ff5e84" strokeWidth="1" />
-    <path d="M11 13 C9 17, 6 20, 4 21" stroke="#ff7899" strokeWidth="1.8" strokeLinecap="round" />
-    <path d="M13 13 C15 17, 18 20, 20 21" stroke="#ff7899" strokeWidth="1.8" strokeLinecap="round" />
-  </svg>
-);
-
 export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = true }) => {
   const { login, register, verifyOTP, resendOTP, error, clearError } = useAuth();
   const [isLogin, setIsLogin] = useState<boolean>(initialIsLogin);
@@ -222,7 +212,6 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
             letterSpacing: '-0.3px'
           }}>
             Campusly
-            <CuteBowSVG size={14} style={{ alignSelf: 'flex-start', marginTop: '-3px', marginLeft: '0.2rem' }} />
           </span>
         </div>
         <h1 style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.1, marginBottom: '1.5rem' }}>
