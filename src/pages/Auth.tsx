@@ -76,7 +76,6 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
         if (res.requiresVerification) {
           setIsVerifyOtp(true);
           setResendCooldown(60);
-          if (res.testingCode) setOtpCode(res.testingCode);
           setSuccessMessage(res.message || 'Please enter the 6-digit verification code sent to your email.');
         } else {
           setLocalError(res.message || 'Invalid login details.');
@@ -88,7 +87,6 @@ export const Auth: React.FC<AuthProps> = ({ onBackToLanding, initialIsLogin = tr
         if (res.requiresVerification) {
           setIsVerifyOtp(true);
           setResendCooldown(60);
-          if (res.testingCode) setOtpCode(res.testingCode);
           setSuccessMessage(res.message || 'Verification code sent to your email!');
         }
       } else {

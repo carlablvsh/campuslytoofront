@@ -16,7 +16,6 @@ interface AuthResult {
   requiresVerification?: boolean;
   email?: string;
   message?: string;
-  testingCode?: string;
 }
 
 interface AuthContextType {
@@ -91,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (!res.ok) {
         if (data.requiresVerification) {
-          return { success: false, requiresVerification: true, email: data.email, message: data.error, testingCode: data.testingCode };
+          return { success: false, requiresVerification: true, email: data.email, message: data.error };
         }
         setError(data.error || 'Invalid login details.');
         return { success: false, message: data.error };
@@ -126,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.requiresVerification) {
-        return { success: true, requiresVerification: true, email: data.email, message: data.message, testingCode: data.testingCode };
+        return { success: true, requiresVerification: true, email: data.email, message: data.message };
       }
 
       if (data.token && data.user) {
