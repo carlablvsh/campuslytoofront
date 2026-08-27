@@ -6,30 +6,30 @@ import { Timetable } from './pages/Timetable';
 import { Attendance } from './pages/Attendance';
 import { Tasks } from './pages/Tasks';
 import { Exams } from './pages/Exams';
-import { Notes } from './pages/Notes';
+// import { Notes } from './pages/Notes';
 import { CalendarView } from './pages/Calendar';
-import { AIAssistant } from './pages/AIAssistant';
+// import { AIAssistant } from './pages/AIAssistant';
 import { LandingPage } from './pages/LandingPage';
 import { StudyRoom } from './pages/StudyRoom';
+import { CampusXP } from './pages/CampusXP';
 
 import { 
   Sparkles, 
   Calendar as CalendarIcon, 
   GraduationCap, 
-  CheckSquare, 
-  FileText, 
+  ClipboardList, 
   Clock, 
   LogOut, 
   Sun, 
   Moon,
-  Bot,
   Bell,
   Search,
   X,
-  Coffee
+  Coffee,
+  Trophy
 } from 'lucide-react';
 
-type ActiveTab = 'dashboard' | 'timetable' | 'attendance' | 'tasks' | 'exams' | 'notes' | 'calendar' | 'ai' | 'studyroom';
+type ActiveTab = 'dashboard' | 'timetable' | 'attendance' | 'tasks' | 'exams' | 'notes' | 'calendar' | 'ai' | 'studyroom' | 'campus-xp';
 
 const CuteBowSVG: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 14, style }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ overflow: 'visible', ...style }}>
@@ -44,9 +44,62 @@ const CuteBowSVG: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ 
 const AppContent: React.FC = () => {
   const { user, loading, logout, token, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
-  const [theme, setTheme] = useState<'dark' | 'light'>('light'); // Light mode default
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('theme') as 'dark' | 'light') || 'light');
   const [publicView, setPublicView] = useState<'landing' | 'login' | 'signup'>('landing');
   const [showSidebarPreview, setShowSidebarPreview] = useState<boolean>(false);
+
+  // Gamification Quick Summary State (for persistent global pill)
+  const [xpSummary, setXpSummary] = useState<{ totalXP: number; level: number; levelTitle: string; progressPercent: number } | null>(null);
+
+  const fetchXpSummary = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/gamification/summary`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setXpSummary({
+          totalXP: data.totalXP,
+          level: data.level,
+          levelTitle: data.levelTitle,
+          progressPercent: data.progressPercent
+        });
+      }
+    } catch (e) {
+      console.error('Error fetching global XP summary:', e);
+    }
+  };
+
+  // Unlockable Customization States
+  const [accentTheme, setAccentTheme] = useState<string>(() => localStorage.getItem('campusly_accent_theme') || 'sakura');
+  const [avatarFrame, setAvatarFrame] = useState<string>(() => localStorage.getItem('campusly_avatar_frame') || 'none');
+
+  const handleSelectTheme = (themeKey: string, reqLevel: number) => {
+    const currentLvl = xpSummary?.level || 1;
+    if (currentLvl < reqLevel) {
+      alert(`✦ Unlocks at Level ${reqLevel}! Keep logging classes, assignments, and study sessions to unlock this palette.`);
+      return;
+    }
+    setAccentTheme(themeKey);
+    localStorage.setItem('campusly_accent_theme', themeKey);
+  };
+
+  const handleSelectFrame = (frameKey: string, reqLevel: number) => {
+    const currentLvl = xpSummary?.level || 1;
+    if (currentLvl < reqLevel) {
+      alert(`✦ Unlocks at Level ${reqLevel}! Keep logging classes, assignments, and study sessions to unlock this frame.`);
+      return;
+    }
+    setAvatarFrame(frameKey);
+    localStorage.setItem('campusly_avatar_frame', frameKey);
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchXpSummary();
+    }
+  }, [token]);
 
   // Notifications State & Fetchers
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -117,6 +170,12 @@ const AppContent: React.FC = () => {
     }
   }, [user, token]);
 
+  useEffect(() => {
+    const handleOpenProfile = () => setShowProfileModal(true);
+    window.addEventListener('open-profile-settings', handleOpenProfile);
+    return () => window.removeEventListener('open-profile-settings', handleOpenProfile);
+  }, []);
+
   // Profile Settings States
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [newUsername, setNewUsername] = useState<string>('');
@@ -127,6 +186,8 @@ const AppContent: React.FC = () => {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState<boolean>(false);
+  const [geminiKeyInput, setGeminiKeyInput] = useState<string>('');
+  const [keyUpdateLoading, setKeyUpdateLoading] = useState<boolean>(false);
 
   // Sync username input with profile state
   useEffect(() => {
@@ -167,6 +228,77 @@ const AppContent: React.FC = () => {
       setProfileError(err.message);
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const handleSaveGeminiKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError(null);
+    setProfileSuccess(null);
+
+    if (!geminiKeyInput.trim()) {
+      setProfileError('Please enter a valid Gemini API key.');
+      return;
+    }
+
+    try {
+      setKeyUpdateLoading(true);
+      const res = await fetch(`${API_BASE_URL}/auth/gemini-key`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ gemini_api_key: geminiKeyInput.trim() })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save Gemini key.');
+      }
+
+      if (user) {
+        updateUser({ ...user, hasGeminiKey: data.hasGeminiKey });
+      }
+      setProfileSuccess('Gemini API key saved successfully! 🌸');
+      setGeminiKeyInput('');
+    } catch (err: any) {
+      setProfileError(err.message);
+    } finally {
+      setKeyUpdateLoading(false);
+    }
+  };
+
+  const handleRemoveGeminiKey = async () => {
+    const confirmed = window.confirm('Are you sure you want to remove your custom Gemini API key? You will not be able to use AI features until you configure a key again.');
+    if (!confirmed) return;
+
+    setProfileError(null);
+    setProfileSuccess(null);
+
+    try {
+      setKeyUpdateLoading(true);
+      const res = await fetch(`${API_BASE_URL}/auth/gemini-key`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to remove Gemini key.');
+      }
+
+      if (user) {
+        updateUser({ ...user, hasGeminiKey: data.hasGeminiKey });
+      }
+      setProfileSuccess('Gemini API key removed successfully.');
+      setGeminiKeyInput('');
+    } catch (err: any) {
+      setProfileError(err.message);
+    } finally {
+      setKeyUpdateLoading(false);
     }
   };
 
@@ -359,6 +491,7 @@ const AppContent: React.FC = () => {
   // Sync theme attribute
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
   }, [theme]);
 
   if (loading) {
@@ -427,17 +560,16 @@ const AppContent: React.FC = () => {
     filteredNotes.length > 0
   );
 
-  // Sidebar Menu Config (Aligned with screenshot navigation list)
+  // Sidebar Menu Config (Dashboard, Study Room, Timetable, Calendar, Attendance, Assignments, Exams, Campus XP)
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Sparkles },
-    { id: 'timetable', label: 'Timetable', icon: Clock },
-    { id: 'attendance', label: 'Attendance', icon: GraduationCap },
-    { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-    { id: 'exams', label: 'Exams', icon: CalendarIcon },
-    { id: 'notes', label: 'Notes Library', icon: FileText },
-    { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
     { id: 'studyroom', label: 'Study Room', icon: Coffee },
-    { id: 'ai', label: 'AI Assistant', icon: Bot },
+    { id: 'timetable', label: 'Timetable', icon: Clock },
+    { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
+    { id: 'attendance', label: 'Attendance', icon: GraduationCap },
+    { id: 'tasks', label: 'Assignments', icon: ClipboardList },
+    { id: 'exams', label: 'Exams', icon: CalendarIcon },
+    { id: 'campus-xp', label: 'Campus XP', icon: Trophy },
   ] as const;
 
   // Render view
@@ -453,21 +585,23 @@ const AppContent: React.FC = () => {
         return <div className="page-tasks"><Tasks /></div>;
       case 'exams':
         return <div className="page-exams"><Exams /></div>;
-      case 'notes':
-        return <div className="page-notes"><Notes /></div>;
+      // case 'notes':
+      //   return <div className="page-notes"><Notes /></div>;
       case 'calendar':
         return <div className="page-calendar"><CalendarView /></div>;
       case 'studyroom':
         return <div className="page-studyroom"><StudyRoom /></div>;
-      case 'ai':
-        return <div className="page-ai"><AIAssistant /></div>;
+      case 'campus-xp':
+        return <div className="page-campusxp"><CampusXP /></div>;
+      // case 'ai':
+      //   return <div className="page-ai"><AIAssistant /></div>;
       default:
         return <div className="page-dashboard"><Dashboard /></div>;
     }
   };
 
   return (
-    <div className="app-container">
+    <div className="app-container" data-accent={accentTheme}>
       
       {/* DESKTOP SIDEBAR */}
       <aside className="sidebar">
@@ -516,6 +650,47 @@ const AppContent: React.FC = () => {
           })}
         </ul>
 
+        {/* Global Persistent XP / Level Indicator */}
+        <div 
+          onClick={() => setActiveTab('campus-xp')}
+          style={{
+            margin: '0.8rem 0 0.4rem',
+            padding: '0.7rem 0.85rem',
+            background: activeTab === 'campus-xp' ? 'rgba(255, 120, 153, 0.15)' : 'var(--bg-surface)',
+            border: activeTab === 'campus-xp' ? '1px solid var(--primary)' : '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-md)',
+            cursor: 'pointer',
+            transition: 'var(--transition)'
+          }}
+          title="View Campus XP Progression & Badges"
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span className="badge" style={{ background: 'var(--primary)', color: '#ffffff', fontSize: '0.68rem', fontWeight: 800, padding: '0.12rem 0.45rem' }}>
+                LVL {xpSummary?.level || 1}
+              </span>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                {xpSummary?.levelTitle || 'Freshman'}
+              </span>
+            </div>
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)' }}>
+              {(xpSummary?.totalXP || 0).toLocaleString()} XP
+            </span>
+          </div>
+
+          <div style={{ height: '4px', background: 'var(--bg-app)', borderRadius: '4px', overflow: 'hidden' }}>
+            <div 
+              style={{ 
+                height: '100%', 
+                width: `${xpSummary?.progressPercent || 0}%`, 
+                background: 'var(--primary)', 
+                borderRadius: '4px',
+                transition: 'width 0.4s ease'
+              }} 
+            />
+          </div>
+        </div>
+
         {/* User Card Footer */}
         <div className="sidebar-footer">
           <div 
@@ -524,7 +699,10 @@ const AppContent: React.FC = () => {
             style={{ cursor: 'pointer', transition: 'background 0.2s' }}
             title="Profile Settings"
           >
-            <div className="user-avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div 
+              className={`user-avatar ${avatarFrame !== 'none' ? `avatar-frame-${avatarFrame}` : ''}`} 
+              style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'box-shadow 0.3s ease' }}
+            >
               {user.avatar_url ? (
                 <img src={user.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
@@ -564,13 +742,13 @@ const AppContent: React.FC = () => {
           );
         })}
         {/* Toggle AI for remaining */}
-        <div 
+        {/* <div 
           className={`mobile-nav-item ${activeTab === 'ai' ? 'active' : ''}`}
           onClick={() => setActiveTab('ai')}
         >
           <Bot className="mobile-nav-item-icon" />
           <span>AI</span>
-        </div>
+        </div> */}
       </nav>
 
       {/* MAIN VIEWPORT */}
@@ -586,20 +764,20 @@ const AppContent: React.FC = () => {
                   {activeTab === 'attendance' && 'Attendance Margin Tracker ✦'}
                   {activeTab === 'tasks' && 'Assignments & Checklist ✦'}
                   {activeTab === 'exams' && 'Exams timetable ✦'}
-                  {activeTab === 'notes' && 'Materials Vault ✦'}
+                  {/* {activeTab === 'notes' && 'Materials Vault ✦'} */}
                   {activeTab === 'calendar' && 'Academic Calendar ✦'}
                   {activeTab === 'studyroom' && 'Focus Sanctuary ✦'}
-                  {activeTab === 'ai' && 'AI Study Workspace ✦'}
+                  {/* {activeTab === 'ai' && 'AI Study Workspace ✦'} */}
                 </h1>
                 <p>
                   {activeTab === 'timetable' && 'Arrange and manage your lectures.'}
                   {activeTab === 'attendance' && 'Calculate safe margins and log present markers.'}
                   {activeTab === 'tasks' && 'Tackle and keep track of pending assignments.'}
                   {activeTab === 'exams' && 'Log midterm schedules and syllabus topics.'}
-                  {activeTab === 'notes' && 'Upload textbooks PDFs and view class notes.'}
+                  {/* {activeTab === 'notes' && 'Upload textbooks PDFs and view class notes.'} */}
                   {activeTab === 'calendar' && 'A comprehensive view of your monthly deadlines.'}
                   {activeTab === 'studyroom' && 'A cozy, distraction-free space to study, listen to ambient sounds, and plan focus blocks.'}
-                  {activeTab === 'ai' && 'Ask questions and synthesize summaries of your course materials.'}
+                  {/* {activeTab === 'ai' && 'Ask questions and synthesize summaries of your course materials.'} */}
                 </p>
               </>
             )}
@@ -907,7 +1085,7 @@ const AppContent: React.FC = () => {
       {/* PROFILE SETTINGS MODAL OVERLAY */}
       {showProfileModal && (
         <div className="modal-overlay" onClick={() => { setShowProfileModal(false); setProfileError(null); setProfileSuccess(null); }}>
-          <div className="modal-content" style={{ maxWidth: '440px' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-content" style={{ maxWidth: '440px', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Profile Settings ✦</h3>
               <button className="modal-close" onClick={() => { setShowProfileModal(false); setProfileError(null); setProfileSuccess(null); }}>
@@ -918,7 +1096,7 @@ const AppContent: React.FC = () => {
             {profileError && <div className="alert-banner danger" style={{ margin: 0 }}>{profileError}</div>}
             {profileSuccess && <div className="alert-banner success" style={{ margin: 0 }}>{profileSuccess}</div>}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem', flex: 1, overflowY: 'auto', paddingRight: '0.4rem', marginTop: '0.5rem' }}>
               {/* Profile Avatar Edit Section */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem', paddingBottom: '1.2rem', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ width: '80px', height: '80px', borderRadius: '50% !important', border: '3px solid var(--primary-glow)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)', fontSize: '1.6rem', fontWeight: 850 }}>
@@ -960,6 +1138,157 @@ const AppContent: React.FC = () => {
                   {profileLoading ? 'Saving...' : 'Save Name'}
                 </button>
               </form>
+
+              {/* Unlockable Appearance & Themes */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-secondary)' }}>
+                    🎨 Color Palette Theme
+                  </h4>
+                  <span className="badge" style={{ fontSize: '0.65rem' }}>Level {xpSummary?.level || 1}</span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem' }}>
+                  {[
+                    { key: 'sakura', name: 'Sakura Pink', color: '#ff5e84', level: 1 },
+                    { key: 'matcha', name: 'Matcha Sage', color: '#10b981', level: 3 },
+                    { key: 'ocean', name: 'Ocean Breeze', color: '#0284c7', level: 5 },
+                    { key: 'lavender', name: 'Lavender Dream', color: '#8b5cf6', level: 7 },
+                    { key: 'peach', name: 'Sunset Peach', color: '#f97316', level: 10 },
+                    { key: 'cyber', name: 'Cyber Violet', color: '#6366f1', level: 12 },
+                  ].map(t => {
+                    const isUnlocked = (xpSummary?.level || 1) >= t.level;
+                    const isSelected = accentTheme === t.key;
+                    return (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => handleSelectTheme(t.key, t.level)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          padding: '0.45rem 0.5rem',
+                          borderRadius: 'var(--radius-sm)',
+                          border: isSelected ? `2px solid ${t.color}` : '1px solid var(--border-color)',
+                          background: isSelected ? 'var(--bg-surface)' : 'var(--bg-app)',
+                          cursor: isUnlocked ? 'pointer' : 'not-allowed',
+                          opacity: isUnlocked ? 1 : 0.5,
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          color: 'var(--text-primary)',
+                          transition: 'var(--transition)'
+                        }}
+                      >
+                        <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: t.color, flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
+                        {!isUnlocked && <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>L{t.level}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Avatar Profile Frames */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem' }}>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-secondary)' }}>
+                    👑 Avatar Profile Frames
+                  </h4>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem' }}>
+                  {[
+                    { key: 'none', name: 'Classic', level: 1 },
+                    { key: 'emerald', name: 'Emerald', color: '#10b981', level: 4 },
+                    { key: 'sapphire', name: 'Sapphire', color: '#0284c7', level: 8 },
+                    { key: 'gold', name: 'Gold Legend', color: '#f59e0b', level: 12 },
+                    { key: 'starlight', name: 'Starlight', color: '#a855f7', level: 15 },
+                  ].map(f => {
+                    const isUnlocked = (xpSummary?.level || 1) >= f.level;
+                    const isSelected = avatarFrame === f.key;
+                    return (
+                      <button
+                        key={f.key}
+                        type="button"
+                        onClick={() => handleSelectFrame(f.key, f.level)}
+                        style={{
+                          padding: '0.45rem 0.5rem',
+                          borderRadius: 'var(--radius-sm)',
+                          border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                          background: isSelected ? 'var(--bg-surface)' : 'var(--bg-app)',
+                          cursor: isUnlocked ? 'pointer' : 'not-allowed',
+                          opacity: isUnlocked ? 1 : 0.5,
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          textAlign: 'center',
+                          color: f.color || 'var(--text-primary)',
+                          transition: 'var(--transition)'
+                        }}
+                      >
+                        {f.name} {!isUnlocked && `(L${f.level})`}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Central Campusly AI Configuration */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.2rem' }}>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  Power your Campusly AI <Sparkles size={16} style={{ color: '#ff7899' }} />
+                </h4>
+                <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', lineHeight: 1.45, margin: 0 }}>
+                  Campusly uses Gemini for its AI-powered features. You can connect your own Gemini API key and use AI features without waiting for Campusly's premium AI plan.
+                </p>
+                <p style={{ fontSize: '0.68rem', color: '#ff7899', margin: 0, fontWeight: 650 }}>
+                  *Note: You are responsible for your own Gemini usage and API quota limits. Campusly does not charge for your Gemini API usage.
+                </p>
+                
+                <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.2rem' }}>
+                  <a 
+                    href="https://aistudio.google.com/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="btn-secondary"
+                    style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem', minWidth: 'auto', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
+                  >
+                    Get Gemini API Key ↗
+                  </a>
+                </div>
+
+                <form onSubmit={handleSaveGeminiKey} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.2rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <input 
+                      type="password" 
+                      className="form-input" 
+                      placeholder={user?.hasGeminiKey ? "Key is active ✦ (Enter new key to replace)" : "Enter Gemini API Key (starts with AQ... or AIza...)"}
+                      value={geminiKeyInput}
+                      onChange={e => setGeminiKeyInput(e.target.value)}
+                      required={!user?.hasGeminiKey}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button 
+                      type="submit" 
+                      className="btn-primary" 
+                      style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', minWidth: 'auto', boxShadow: 'none' }}
+                      disabled={keyUpdateLoading}
+                    >
+                      {keyUpdateLoading ? 'Saving...' : user?.hasGeminiKey ? 'Update Key' : 'Save Key'}
+                    </button>
+                    {user?.hasGeminiKey && (
+                      <button 
+                        type="button" 
+                        onClick={handleRemoveGeminiKey}
+                        className="btn-secondary"
+                        style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', minWidth: 'auto', borderColor: '#ef4444', color: '#ef4444' }}
+                        disabled={keyUpdateLoading}
+                      >
+                        Remove Key
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
 
               {/* Form 2: Change Password */}
               <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.2rem' }}>

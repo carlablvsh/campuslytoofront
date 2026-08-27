@@ -17,8 +17,21 @@ import {
   Clock,
   ListTodo,
   FileText,
-  Music
+  Music,
+  SkipBack,
+  SkipForward,
+  Search,
+  ExternalLink
 } from 'lucide-react';
+import { useAuth, API_BASE_URL } from '../context/AuthContext';
+import { generateCodeVerifier, generateCodeChallenge } from '../utils/spotifyAuth';
+
+declare global {
+  interface Window {
+    onSpotifyWebPlaybackSDKReady: () => void;
+    Spotify: any;
+  }
+}
 
 interface Task {
   id: string;
@@ -37,50 +50,417 @@ export const StudyRoom: React.FC = () => {
   const [showSpotify, setShowSpotify] = useState(false);
 
   // ==========================================
-  // Spotify Playlist State
+  // Spotify Account Integration State
   // ==========================================
-  const [spotifyUrlInput, setSpotifyUrlInput] = useState('');
-  const [spotifyEmbedUrl, setSpotifyEmbedUrl] = useState(
-    'https://open.spotify.com/embed/playlist/37i9dQZF1DWWQRwui0ExPn?utm_source=generator'
-  );
+  const { token } = useAuth();
+  const [spotifyConnected, setSpotifyConnected] = useState(false);
+  const [spotifyToken, setSpotifyToken] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [isPremium, setIsPremium] = useState(true); // Default to true, catches account_error if non-Premium
+  const [player, setPlayer] = useState<any>(null);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
 
-  const convertToEmbedUrl = (url: string) => {
-    if (!url) return '';
-    if (url.includes('/embed/')) return url;
-    
+  // Player State
+  const [currentTrack, setCurrentTrack] = useState<any>(null);
+  const [isPaused, setIsPaused] = useState(true);
+  const [trackProgress, setTrackProgress] = useState(0);
+  const [trackDuration, setTrackDuration] = useState(0);
+  const [playerVolume, setPlayerVolume] = useState(50); // Default 50%
+  const [playbackStatusMessage, setPlaybackStatusMessage] = useState('Initializing player...');
+
+  // Search State
+  const [spotifySearchQuery, setSpotifySearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // Fetch Spotify configuration (ClientId)
+  const fetchSpotifyConfig = async () => {
+    if (!token) return null;
     try {
-      const cleaned = url.split('?')[0]; // Remove query params
-      if (cleaned.includes('spotify.com/playlist/')) {
-        return cleaned.replace('spotify.com/playlist/', 'spotify.com/embed/playlist/') + '?utm_source=generator';
+      const res = await fetch(`${API_BASE_URL}/spotify/config`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setClientId(data.clientId);
+        return data.clientId;
       }
-      if (cleaned.includes('spotify.com/album/')) {
-        return cleaned.replace('spotify.com/album/', 'spotify.com/embed/album/') + '?utm_source=generator';
-      }
-      if (cleaned.includes('spotify.com/artist/')) {
-        return cleaned.replace('spotify.com/artist/', 'spotify.com/embed/artist/') + '?utm_source=generator';
-      }
-      if (cleaned.includes('spotify.com/track/')) {
-        return cleaned.replace('spotify.com/track/', 'spotify.com/embed/track/') + '?utm_source=generator';
-      }
-    } catch (e) {}
-    return url;
-  };
-
-  const handleSpotifySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!spotifyUrlInput.trim()) return;
-    const embedUrl = convertToEmbedUrl(spotifyUrlInput.trim());
-    setSpotifyEmbedUrl(embedUrl);
-    localStorage.setItem('campusly_studyroom_spotify_url', embedUrl);
-    setSpotifyUrlInput('');
-  };
-
-  useEffect(() => {
-    const savedSpotify = localStorage.getItem('campusly_studyroom_spotify_url');
-    if (savedSpotify) {
-      setSpotifyEmbedUrl(savedSpotify);
+    } catch (err) {
+      console.error('Failed to fetch Spotify config:', err);
     }
-  }, []);
+    return null;
+  };
+
+  // Check connection status & get active token
+  const checkSpotifyConnection = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/spotify/token`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.connected && data.accessToken) {
+          setSpotifyConnected(true);
+          setSpotifyToken(data.accessToken);
+        } else {
+          setSpotifyConnected(false);
+          setSpotifyToken(null);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to verify Spotify connection:', err);
+    }
+  };
+
+  // Perform token exchange when redirect code is present in URL
+  const handleUrlCallback = async () => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (!code) return;
+
+    // Clean query parameters from URL immediately
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    const verifier = localStorage.getItem('spotify_code_verifier');
+    if (!verifier) {
+      console.error('No code verifier found in local storage!');
+      return;
+    }
+
+    try {
+      setPlaybackStatusMessage('Connecting to Spotify...');
+      const redirectUri = window.location.origin + '/';
+      const res = await fetch(`${API_BASE_URL}/spotify/exchange`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          code,
+          code_verifier: verifier,
+          redirect_uri: redirectUri
+        })
+      });
+
+      if (res.ok) {
+        localStorage.removeItem('spotify_code_verifier');
+        await checkSpotifyConnection();
+      } else {
+        const errData = await res.json();
+        console.error('Failed to exchange code:', errData.error);
+        alert(`Spotify Connection Failed: ${errData.error}`);
+      }
+    } catch (err) {
+      console.error('OAuth callback handling failed:', err);
+    }
+  };
+
+  const handleConnectSpotify = async () => {
+    let activeClientId = clientId;
+    if (!activeClientId) {
+      activeClientId = await fetchSpotifyConfig();
+    }
+    if (!activeClientId) {
+      alert('Spotify integration is not fully configured on the server. Please ensure SPOTIFY_CLIENT_ID is set.');
+      return;
+    }
+
+    const verifier = generateCodeVerifier();
+    localStorage.setItem('spotify_code_verifier', verifier);
+
+    const challenge = await generateCodeChallenge(verifier);
+    const redirectUri = encodeURIComponent(window.location.origin + '/');
+    const scopes = encodeURIComponent(
+      'streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state user-read-currently-playing'
+    );
+
+    const authUrl = `https://accounts.spotify.com/authorize?client_id=${activeClientId}&response_type=code&redirect_uri=${redirectUri}&code_challenge_method=S256&code_challenge=${challenge}&scope=${scopes}`;
+    window.location.href = authUrl;
+  };
+
+  const handleDisconnectSpotify = async () => {
+    if (!token) return;
+    if (player) {
+      player.disconnect();
+      setPlayer(null);
+    }
+    try {
+      const res = await fetch(`${API_BASE_URL}/spotify/disconnect`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setSpotifyConnected(false);
+        setSpotifyToken(null);
+        setDeviceId(null);
+        setCurrentTrack(null);
+        setSearchResults([]);
+      }
+    } catch (err) {
+      console.error('Failed to disconnect Spotify:', err);
+    }
+  };
+
+  const initializeSpotifyPlayer = () => {
+    if (!spotifyToken) return;
+
+    // Prevent duplicate player initializations
+    if (player) return;
+
+    setPlaybackStatusMessage('Connecting Web Playback SDK...');
+    const newPlayer = new window.Spotify.Player({
+      name: 'Campusly Study Player',
+      getOAuthToken: (cb: (t: string) => void) => {
+        // Fetch new fresh token in case it expired
+        fetch(`${API_BASE_URL}/spotify/token`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.connected && data.accessToken) {
+              setSpotifyToken(data.accessToken);
+              cb(data.accessToken);
+            } else {
+              cb('');
+            }
+          })
+          .catch(() => cb(''));
+      },
+      volume: playerVolume / 100
+    });
+
+    newPlayer.addListener('initialization_error', ({ message }: { message: string }) => {
+      console.error('Spotify Init Error:', message);
+      setPlaybackStatusMessage(`Initialization error: ${message}`);
+    });
+
+    newPlayer.addListener('authentication_error', ({ message }: { message: string }) => {
+      console.error('Spotify Auth Error:', message);
+      setPlaybackStatusMessage('Authentication error. Re-connecting...');
+      handleDisconnectSpotify();
+    });
+
+    newPlayer.addListener('account_error', ({ message }: { message: string }) => {
+      console.warn('Spotify Account Restriction:', message);
+      setIsPremium(false);
+      setPlaybackStatusMessage('Spotify Premium account is required for inline playback.');
+    });
+
+    newPlayer.addListener('playback_error', ({ message }: { message: string }) => {
+      console.error('Spotify Playback Error:', message);
+    });
+
+    newPlayer.addListener('ready', ({ device_id }: { device_id: string }) => {
+      console.log('Spotify Player is ready on device:', device_id);
+      setDeviceId(device_id);
+      setPlaybackStatusMessage('Ready to play music!');
+    });
+
+    newPlayer.addListener('not_ready', ({ device_id }: { device_id: string }) => {
+      console.log('Device is offline:', device_id);
+      setPlaybackStatusMessage('Device went offline.');
+    });
+
+    newPlayer.addListener('player_state_changed', (state: any) => {
+      if (!state) {
+        // Player state can be null if playback is stopped or transferred
+        return;
+      }
+      setCurrentTrack(state.track_window.current_track);
+      setIsPaused(state.paused);
+      setTrackProgress(state.position);
+      setTrackDuration(state.duration);
+    });
+
+    newPlayer.connect();
+    setPlayer(newPlayer);
+  };
+
+  // Load Spotify configuration & check connection status on mount
+  useEffect(() => {
+    const init = async () => {
+      await fetchSpotifyConfig();
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      if (code) {
+        await handleUrlCallback();
+      } else {
+        await checkSpotifyConnection();
+      }
+    };
+    init();
+  }, [token]);
+
+  // Load Spotify SDK when connected and token is active
+  useEffect(() => {
+    if (!spotifyConnected || !spotifyToken) return;
+
+    if (window.Spotify) {
+      initializeSpotifyPlayer();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://sdk.scdn.co/spotify-player.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    window.onSpotifyWebPlaybackSDKReady = () => {
+      initializeSpotifyPlayer();
+    };
+
+    return () => {
+      if (player) {
+        player.disconnect();
+      }
+    };
+  }, [spotifyConnected, spotifyToken]);
+
+  // Progress tracker timer loop
+  useEffect(() => {
+    if (isPaused || !trackDuration) return;
+
+    const interval = setInterval(() => {
+      setTrackProgress(prev => {
+        if (prev + 1000 >= trackDuration) {
+          clearInterval(interval);
+          return trackDuration;
+        }
+        return prev + 1000;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isPaused, trackDuration]);
+
+  // Search tracks & playlists
+  const handleSpotifySearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!spotifySearchQuery.trim() || !spotifyToken) return;
+
+    setSearchLoading(true);
+    try {
+      const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(spotifySearchQuery.trim())}&type=track,playlist&limit=5`, {
+        headers: {
+          'Authorization': `Bearer ${spotifyToken}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const tracks = data.tracks?.items || [];
+        const playlists = data.playlists?.items || [];
+        setSearchResults([...tracks, ...playlists]);
+      } else if (res.status === 401) {
+        await checkSpotifyConnection();
+      }
+    } catch (err) {
+      console.error('Spotify search error:', err);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handlePlaySpotifyItem = async (uri: string) => {
+    if (!spotifyToken) return;
+
+    if (!isPremium) {
+      const url = uri.includes(':playlist:') 
+        ? `https://open.spotify.com/playlist/${uri.split(':playlist:')[1]}`
+        : `https://open.spotify.com/track/${uri.split(':track:')[1]}`;
+      window.open(url, '_blank');
+      return;
+    }
+
+    if (!deviceId) {
+      setPlaybackStatusMessage('No playback device detected. Make sure Spotify is active.');
+      return;
+    }
+
+    try {
+      const body: any = {};
+      if (uri.includes(':track:')) {
+        body.uris = [uri];
+      } else {
+        body.context_uri = uri;
+      }
+
+      const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${spotifyToken}`
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error('Play request failed:', errText);
+        setPlaybackStatusMessage('Playback failed. Please select this device in your Spotify app.');
+      }
+    } catch (err) {
+      console.error('Play request error:', err);
+    }
+  };
+
+  const handleTogglePlay = async () => {
+    if (!player) return;
+    try {
+      await player.togglePlay();
+    } catch (err) {
+      console.error('Toggle play error:', err);
+    }
+  };
+
+  const handleNextTrack = async () => {
+    if (!player) return;
+    try {
+      await player.nextTrack();
+    } catch (err) {
+      console.error('Next track error:', err);
+    }
+  };
+
+  const handlePrevTrack = async () => {
+    if (!player) return;
+    try {
+      await player.previousTrack();
+    } catch (err) {
+      console.error('Prev track error:', err);
+    }
+  };
+
+  const handleSeek = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!player) return;
+    const seekMs = parseInt(e.target.value);
+    try {
+      await player.seek(seekMs);
+      setTrackProgress(seekMs);
+    } catch (err) {
+      console.error('Seek error:', err);
+    }
+  };
+
+  const handleSpotifyVolumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const vol = parseInt(e.target.value);
+    setPlayerVolume(vol);
+    if (!player) return;
+    try {
+      await player.setVolume(vol / 100);
+    } catch (err) {
+      console.error('Volume change error:', err);
+    }
+  };
+
+  const formatSpotifyTime = (ms: number) => {
+    if (!ms) return '0:00';
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  };
 
   // ==========================================
   // Timer States & Logic
@@ -138,6 +518,22 @@ export const StudyRoom: React.FC = () => {
             setIsPlaying(false);
             clearInterval(timerRef.current);
             playChimeSound();
+
+            // Award server-controlled XP when a focus session finishes
+            if (timerMode === 'focus' && durations.focus >= 10 && token) {
+              fetch(`${API_BASE_URL}/gamification/study-session`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  minutes: durations.focus,
+                  session_id: `study_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+                })
+              }).catch(e => console.error('Error logging study session XP:', e));
+            }
+
             return 0;
           }
           return prev - 1;
@@ -933,60 +1329,183 @@ export const StudyRoom: React.FC = () => {
               <h2 style={{ fontFamily: 'var(--font-serif)' }}>Spotify Player</h2>
             </div>
             
-            <div className="spotify-widget-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-              <iframe 
-                src={spotifyEmbedUrl} 
-                width="100%" 
-                height="152" 
-                frameBorder="0" 
-                allowFullScreen={false} 
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-                loading="lazy"
-                style={{ borderRadius: '12px', border: 'none' }}
-              />
+            {!spotifyConnected ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem', padding: '1rem', textAlign: 'center' }}>
+                <div style={{ background: '#1db954', color: 'white', padding: '0.6rem', borderRadius: '50%' }}>
+                  <Music size={24} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.2rem 0' }}>Connect Spotify</h3>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>Play your music while you study.</p>
+                </div>
+                <button 
+                  onClick={handleConnectSpotify}
+                  style={{
+                    background: '#1db954',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '20px',
+                    padding: '0.45rem 1.2rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(29, 185, 84, 0.25)',
+                    transition: 'transform 0.2s'
+                  }}
+                >
+                  Connect Account
+                </button>
+              </div>
+            ) : (
+              <div className="spotify-widget-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                {/* CURRENTLY PLAYING SECTION */}
+                <div style={{ display: 'flex', gap: '0.8rem', background: 'var(--bg-input)', padding: '0.6rem', borderRadius: '10px', alignItems: 'center' }}>
+                  <div style={{ width: '48px', height: '48px', background: 'var(--border-color)', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
+                    {currentTrack?.album?.images?.[0]?.url ? (
+                      <img src={currentTrack.album.images[0].url} alt="Album Art" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
+                        <Music size={20} />
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-primary)' }}>
+                      {currentTrack?.name || 'No Track Selected'}
+                    </span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {currentTrack?.artists?.map((a: any) => a.name).join(', ') || 'Select a song below'}
+                    </span>
+                  </div>
+                </div>
 
-              <form onSubmit={handleSpotifySubmit} className="spotify-url-form" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                  Load Custom Playlist/Album Link:
-                </span>
-                <div style={{ display: 'flex', gap: '0.4rem' }}>
-                  <input 
-                    type="text" 
-                    placeholder="Paste Spotify Link..." 
-                    value={spotifyUrlInput}
-                    onChange={e => setSpotifyUrlInput(e.target.value)}
-                    style={{
-                      flex: 1,
-                      background: 'var(--bg-input)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '8px',
-                      padding: '0.4rem 0.6rem',
-                      fontSize: '0.72rem',
-                      color: 'var(--text-primary)',
-                      outline: 'none'
-                    }}
-                  />
+                {/* PROGRESS BAR */}
+                {isPremium && currentTrack && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <input 
+                      type="range" 
+                      min={0} 
+                      max={trackDuration} 
+                      value={trackProgress} 
+                      onChange={handleSeek} 
+                      style={{ width: '100%', accentColor: '#1db954', cursor: 'pointer', height: '3px' }} 
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.58rem', color: 'var(--text-muted)' }}>
+                      <span>{formatSpotifyTime(trackProgress)}</span>
+                      <span>{formatSpotifyTime(trackDuration)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* CONTROLS */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.2rem' }}>
+                  {isPremium ? (
+                    <>
+                      <button onClick={handlePrevTrack} className="btn-secondary" style={{ padding: '0.35rem', minWidth: 'auto', borderRadius: '50%' }}>
+                        <SkipBack size={14} />
+                      </button>
+                      <button onClick={handleTogglePlay} className="btn-primary" style={{ padding: '0.5rem', minWidth: 'auto', borderRadius: '50%', background: '#1db954', color: 'white', borderColor: '#1db954' }}>
+                        {isPaused ? <Play size={14} fill="white" /> : <Pause size={14} fill="white" />}
+                      </button>
+                      <button onClick={handleNextTrack} className="btn-secondary" style={{ padding: '0.35rem', minWidth: 'auto', borderRadius: '50%' }}>
+                        <SkipForward size={14} />
+                      </button>
+                    </>
+                  ) : (
+                    currentTrack && (
+                      <a 
+                        href={`https://open.spotify.com/track/${currentTrack.id}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="btn-primary"
+                        style={{ fontSize: '0.72rem', padding: '0.4rem 1rem', background: '#1db954', color: 'white', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                      >
+                        <ExternalLink size={12} /> Open in Spotify
+                      </a>
+                    )
+                  )}
+                </div>
+
+                {/* VOLUME CONTROLLER */}
+                {isPremium && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '0.6rem' }}>
+                    <Volume2 size={12} style={{ color: 'var(--text-muted)' }} />
+                    <input 
+                      type="range" 
+                      min={0} 
+                      max={100} 
+                      value={playerVolume} 
+                      onChange={handleSpotifyVolumeChange} 
+                      style={{ width: '80px', accentColor: '#1db954', height: '3px' }} 
+                    />
+                  </div>
+                )}
+
+                {/* SEARCH BOX */}
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <form onSubmit={handleSpotifySearch} style={{ display: 'flex', gap: '0.3rem' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Search tracks, playlists..." 
+                      value={spotifySearchQuery}
+                      onChange={e => setSpotifySearchQuery(e.target.value)}
+                      style={{
+                        flex: 1,
+                        background: 'var(--bg-input)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '8px',
+                        padding: '0.35rem 0.6rem',
+                        fontSize: '0.72rem',
+                        color: 'var(--text-primary)',
+                        outline: 'none'
+                      }}
+                    />
+                    <button type="submit" className="btn-secondary" style={{ padding: '0.35rem 0.6rem', minWidth: 'auto' }} disabled={searchLoading}>
+                      <Search size={12} />
+                    </button>
+                  </form>
+
+                  {searchResults.length > 0 && (
+                    <div style={{ maxHeight: '140px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.3rem', background: 'var(--bg-app)', padding: '0.4rem', borderRadius: '8px' }}>
+                      {searchResults.map((item, index) => (
+                        <div 
+                          key={index}
+                          onClick={() => handlePlaySpotifyItem(item.uri)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.3rem', borderRadius: '4px', cursor: 'pointer' }}
+                          className="spotify-search-item"
+                        >
+                          <div style={{ width: '28px', height: '28px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden', flexShrink: 0 }}>
+                            <img src={item.album?.images?.[0]?.url || item.images?.[0]?.url || ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
+                            <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {item.type === 'track' ? item.artists?.map((a: any) => a.name).join(', ') : `Playlist • ${item.tracks?.total || 0} songs`}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.58rem', color: '#1db954', fontWeight: 700 }}>
+                            {isPremium ? 'Play' : 'Open'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* STATUS BAR & DISCONNECT */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '0.6rem', fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+                  <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '180px' }}>
+                    Status: {playbackStatusMessage}
+                  </span>
                   <button 
-                    type="submit" 
-                    style={{
-                      background: '#1db954',
-                      color: 'white',
-                      border: 'none',
-                      padding: '0.4rem 0.8rem',
-                      borderRadius: '8px',
-                      fontSize: '0.72rem',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.2rem'
-                    }}
+                    onClick={handleDisconnectSpotify}
+                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 700, padding: 0 }}
                   >
-                    Load
+                    Disconnect
                   </button>
                 </div>
-              </form>
-            </div>
+              </div>
+            )}
           </div>
         )}
 

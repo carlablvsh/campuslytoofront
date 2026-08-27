@@ -22,7 +22,7 @@ interface ChatMessage {
 }
 
 export const AIAssistant: React.FC = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   
   // Data States
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -157,6 +157,30 @@ export const AIAssistant: React.FC = () => {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <div style={{ color: 'var(--text-muted)' }}>Synching AI workspace...</div>
+      </div>
+    );
+  }
+
+  if (!user?.hasGeminiKey) {
+    return (
+      <div className="fade-in ai-workspace-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+        <div className="landing-hover-card" style={{ maxWidth: '480px', padding: '2.5rem 2rem', textAlign: 'center', background: '#ffffff', border: '1.5px solid #ff7899', borderRadius: '24px', boxShadow: '0 8px 24px rgba(255, 94, 132, 0.05)' }}>
+          <Bot size={44} style={{ color: '#ff7899', marginBottom: '1rem', marginLeft: 'auto', marginRight: 'auto' }} />
+          <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#2e1622', marginBottom: '0.8rem' }}>Connect Your Gemini Key ✦</h3>
+          <p style={{ fontSize: '0.82rem', color: '#8c707a', lineHeight: 1.5, marginBottom: '1.5rem' }}>
+            Campusly's AI Study Companion requires your own Gemini API key to run. This keeps Campusly mostly free and avoids usage limits!
+          </p>
+          <p style={{ fontSize: '0.73rem', color: '#ff7899', marginBottom: '1.8rem', fontWeight: 650 }}>
+            *Note: You are responsible for your own Gemini usage and API quota limits. Getting a key is quick and free.
+          </p>
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('open-profile-settings'))}
+            className="btn-primary"
+            style={{ padding: '0.65rem 1.4rem', borderRadius: '20px', display: 'inline-flex', alignSelf: 'center' }}
+          >
+            Setup Gemini API Key 🎀
+          </button>
+        </div>
       </div>
     );
   }

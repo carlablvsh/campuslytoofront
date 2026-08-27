@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth, API_BASE_URL } from '../context/AuthContext';
 import { MapPin, ClipboardList, Clock, Calendar, BookOpen } from 'lucide-react';
+import { formatLocalDate } from '../utils/dateUtils';
 
 interface ClassToday {
   id: string;
@@ -12,6 +13,10 @@ interface ClassToday {
   subject_name: string;
   subject_code: string;
   subject_color: string;
+  type?: string;
+  event_type?: string;
+  title?: string;
+  is_moved?: boolean;
 }
 
 interface Assignment {
@@ -62,6 +67,7 @@ interface DashboardData {
     subject_code: string;
     subject_color: string;
   }[];
+  activeBreak: { name: string, start_date: string, end_date: string } | null;
   stats: {
     averageAttendance: number;
     totalPendingAssignments: number;
@@ -194,7 +200,7 @@ export const Dashboard: React.FC = () => {
     try {
       const today = new Date();
       const dayOfWeek = today.getDay(); 
-      const dateStr = today.toISOString().split('T')[0];
+      const dateStr = formatLocalDate(today);
 
       const [dashRes, attRes] = await Promise.all([
         fetch(`${API_BASE_URL}/dashboard?dayOfWeek=${dayOfWeek}&date=${dateStr}`, {
@@ -403,12 +409,38 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
+      {data.activeBreak && (
+        <div style={{ 
+          background: 'rgba(255, 77, 109, 0.08)',
+          border: '1px dashed rgba(255, 77, 109, 0.25)',
+          borderRadius: '12px',
+          padding: '0.8rem 1.2rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.6rem',
+          fontSize: '0.85rem',
+          color: '#ff4d6d',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
+        }}>
+          <span>🏖️</span>
+          <div>
+            <strong style={{ color: '#ff4d6d' }}>Vacation Break Active: {data.activeBreak.name}</strong>
+            <span style={{ marginLeft: '0.4rem', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+              ({data.activeBreak.start_date} to {data.activeBreak.end_date})
+            </span>
+            <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+              Your regular weekly lectures are currently paused. Enjoy your break!
+            </p>
+          </div>
+        </div>
+      )}
+ 
       {/* 2. STATS OVERVIEW SINGLE ROW CARD */}
       <div 
         className="section-card" 
         style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(4, 1fr)', 
+          gridTemplateColumns: 'repeat(3, 1fr)', 
           gap: 0, 
           padding: 0, 
           overflow: 'hidden',
@@ -455,7 +487,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Column 3: Next Exam */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '1rem 1.4rem', borderRight: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '1rem 1.4rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '10px', background: '#fff9e6', color: '#e6c15c', flexShrink: 0 }}>
             <Calendar size={18} />
           </div>
@@ -468,24 +500,6 @@ export const Dashboard: React.FC = () => {
             </span>
             <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '0.05rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '110px' }}>
               {data.nextExam ? data.nextExam.title : 'No upcoming exams'}
-            </span>
-          </div>
-        </div>
-
-        {/* Column 4: Notes Saved */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '1rem 1.4rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '10px', background: '#eefdf8', color: '#3ec9a5', flexShrink: 0 }}>
-            <BookOpen size={18} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', lineHeight: '1.1' }}>
-              {data.stats.totalNotesSaved || 0}
-            </span>
-            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
-              Notes Saved
-            </span>
-            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '0.05rem' }}>
-              Keep learning!
             </span>
           </div>
         </div>
@@ -551,23 +565,43 @@ export const Dashboard: React.FC = () => {
                   let iconBg = '#ffeef1';
                   let iconColor = '#ff5e84';
                   
-                  const nameLower = c.subject_name.toLowerCase();
-                  if (nameLower.includes('algorithm') || nameLower.includes('programming') || nameLower.includes('software')) {
-                    classIcon = <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>&lt;/&gt;</span>;
-                    iconBg = '#f5effc';
-                    iconColor = '#b6a6ca';
-                  } else if (nameLower.includes('network') || nameLower.includes('database')) {
-                    classIcon = <BookOpen size={15} />;
-                    iconBg = '#ffeef1';
-                    iconColor = '#ff5e84';
-                  } else if (nameLower.includes('vision') || nameLower.includes('image') || nameLower.includes('graphics')) {
-                    classIcon = <span style={{ fontSize: '0.95rem' }}>📷</span>;
-                    iconBg = '#fff9e6';
-                    iconColor = '#e6c15c';
-                  } else if (nameLower.includes('deep') || nameLower.includes('intelligence') || nameLower.includes('machine')) {
-                    classIcon = <span style={{ fontSize: '0.95rem' }}>🧠</span>;
-                    iconBg = '#eefdf8';
-                    iconColor = '#3ec9a5';
+                  const nameLower = (c.subject_name || c.title || '').toLowerCase();
+                  if (c.type === 'event') {
+                    if (c.event_type === 'work') {
+                      classIcon = <span style={{ fontSize: '0.85rem' }}>💼</span>;
+                      iconBg = '#ffeef1';
+                      iconColor = '#ff5e84';
+                    } else if (c.event_type === 'study') {
+                      classIcon = <span style={{ fontSize: '0.85rem' }}>📚</span>;
+                      iconBg = '#eefdf8';
+                      iconColor = '#3ec9a5';
+                    } else if (c.event_type === 'class_extra') {
+                      classIcon = <span style={{ fontSize: '0.85rem' }}>🏫</span>;
+                      iconBg = '#f5effc';
+                      iconColor = '#b6a6ca';
+                    } else {
+                      classIcon = <span style={{ fontSize: '0.85rem' }}>🌟</span>;
+                      iconBg = '#fff9e6';
+                      iconColor = '#e6c15c';
+                    }
+                  } else {
+                    if (nameLower.includes('algorithm') || nameLower.includes('programming') || nameLower.includes('software')) {
+                      classIcon = <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>&lt;/&gt;</span>;
+                      iconBg = '#f5effc';
+                      iconColor = '#b6a6ca';
+                    } else if (nameLower.includes('network') || nameLower.includes('database')) {
+                      classIcon = <BookOpen size={15} />;
+                      iconBg = '#ffeef1';
+                      iconColor = '#ff5e84';
+                    } else if (nameLower.includes('vision') || nameLower.includes('image') || nameLower.includes('graphics')) {
+                      classIcon = <span style={{ fontSize: '0.95rem' }}>📷</span>;
+                      iconBg = '#fff9e6';
+                      iconColor = '#e6c15c';
+                    } else if (nameLower.includes('deep') || nameLower.includes('intelligence') || nameLower.includes('machine')) {
+                      classIcon = <span style={{ fontSize: '0.95rem' }}>🧠</span>;
+                      iconBg = '#eefdf8';
+                      iconColor = '#3ec9a5';
+                    }
                   }
 
                   return (
@@ -637,7 +671,8 @@ export const Dashboard: React.FC = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                             <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {c.subject_name}
+                              {c.subject_name || c.title}
+                              {c.is_moved && <span style={{ fontSize: '0.7rem', color: '#ff5e84', fontWeight: 500, marginLeft: '0.3rem' }}>(Rescheduled)</span>}
                             </span>
                             {active && (
                               <span className="badge" style={{ background: 'var(--primary)', color: 'white', fontSize: '0.45rem', padding: '0.05rem 0.25rem' }}>ACTIVE</span>

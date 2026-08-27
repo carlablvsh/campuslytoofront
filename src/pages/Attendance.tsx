@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth, API_BASE_URL } from '../context/AuthContext';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Calendar, BookOpen } from 'lucide-react';
+import { formatLocalDate } from '../utils/dateUtils';
 
 interface AttendanceStat {
   id: string;
@@ -22,17 +23,19 @@ interface AttendanceStat {
 export const Attendance: React.FC = () => {
   const { token } = useAuth();
   const [stats, setStats] = useState<AttendanceStat[]>([]);
+  const [todaySubjectIds, setTodaySubjectIds] = useState<Set<string>>(new Set());
+  const [todaySubjectTimes, setTodaySubjectTimes] = useState<Record<string, { startTime: string; timeRange: string }>>({});
+  const [filterMode, setFilterMode] = useState<'today' | 'all'>('today');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
   // Past Date Logging States
   const [logPastSubjectId, setLogPastSubjectId] = useState<string>('');
-  const [logPastDate, setLogPastDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [logPastDate, setLogPastDate] = useState<string>(formatLocalDate(new Date()));
   const [logPastStatus, setLogPastStatus] = useState<'present' | 'absent' | 'cancelled'>('present');
   const [logPastLoading, setLogPastLoading] = useState<boolean>(false);
 
   // Simulator states stored per subject by subject_id
-  // Format: { [subjectId]: { value: number, mode: 'miss' | 'attend' } }
   const [simulators, setSimulators] = useState<Record<string, { value: number; mode: 'miss' | 'attend' }>>({});
 
   // Auto-sync selected subject for past logs once stats load
@@ -44,18 +47,43 @@ export const Attendance: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/academic/attendance/stats`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const todayStr = formatLocalDate(new Date());
+      const [statsRes, occRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/academic/attendance/stats`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE_URL}/academic/calendar/occurrences?startDate=${todayStr}&endDate=${todayStr}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
 
-      if (!res.ok) {
+      if (!statsRes.ok) {
         throw new Error('Failed to load attendance metrics.');
       }
 
-      const data: AttendanceStat[] = await res.json();
+      const data: AttendanceStat[] = await statsRes.json();
       setStats(data);
+
+      if (occRes.ok) {
+        const occurrences = await occRes.json();
+        const subjectIds = new Set<string>();
+        const timesMap: Record<string, { startTime: string; timeRange: string }> = {};
+
+        occurrences.forEach((occ: any) => {
+          if (occ.subject_id) {
+            subjectIds.add(occ.subject_id);
+            const st = occ.start_time || '00:00';
+            const et = occ.end_time || '';
+            const range = et ? `${st} - ${et}` : st;
+            if (!timesMap[occ.subject_id] || st < timesMap[occ.subject_id].startTime) {
+              timesMap[occ.subject_id] = { startTime: st, timeRange: range };
+            }
+          }
+        });
+
+        setTodaySubjectIds(subjectIds);
+        setTodaySubjectTimes(timesMap);
+      }
       
       // Initialize simulator defaults for subjects that don't have them yet
       setSimulators(prev => {
@@ -105,7 +133,6 @@ export const Attendance: React.FC = () => {
       });
 
       if (res.ok) {
-        // Refresh calculations
         fetchStats();
         alert('Historical attendance log saved successfully!');
       } else {
@@ -121,7 +148,7 @@ export const Attendance: React.FC = () => {
 
   // Log attendance record today
   const handleLogAttendance = async (subjectId: string, status: 'present' | 'absent' | 'cancelled') => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatLocalDate(new Date());
     try {
       const res = await fetch(`${API_BASE_URL}/academic/attendance`, {
         method: 'POST',
@@ -137,7 +164,6 @@ export const Attendance: React.FC = () => {
       });
 
       if (res.ok) {
-        // Refresh calculations
         fetchStats();
       } else {
         const errorData = await res.json();
@@ -148,7 +174,6 @@ export const Attendance: React.FC = () => {
     }
   };
 
-  // Helper: update individual simulator values
   const handleSimChange = (subjectId: string, value: number) => {
     setSimulators(prev => ({
       ...prev,
@@ -163,11 +188,9 @@ export const Attendance: React.FC = () => {
     }));
   };
 
-  // Helper: calculate simulated percentage
   const getSimulatedPercentage = (subject: AttendanceStat, simValue: number, simMode: 'miss' | 'attend') => {
     const p = subject.presentCount;
     const active = subject.totalActive;
-    
     if (simMode === 'miss') {
       const newTotal = active + simValue;
       return newTotal > 0 ? parseFloat(((p / newTotal) * 100).toFixed(1)) : 100.0;
@@ -185,85 +208,83 @@ export const Attendance: React.FC = () => {
       </div>
     );
   }
+
+  const displayedStats = filterMode === 'today'
+    ? stats
+        .filter(s => todaySubjectIds.has(s.id))
+        .sort((a, b) => {
+          const timeA = todaySubjectTimes[a.id]?.startTime || '99:99';
+          const timeB = todaySubjectTimes[b.id]?.startTime || '99:99';
+          return timeA.localeCompare(timeB);
+        })
+    : stats;
+
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
       {error && (
         <div className="alert-banner danger">
           <span>{error}</span>
         </div>
-      )}      {/* Log Past Attendance Card */}
+      )}
+
+      {/* Filter Toggle: Today's Classes vs All Subjects */}
       {stats.length > 0 && (
-        <div className="section-card" style={{ padding: '1.2rem 1.6rem', background: 'var(--bg-surface)' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '0.8rem', color: 'var(--text-primary)' }}>Log Past Attendance ✦</h3>
-          <form onSubmit={handleLogPastAttendance} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div className="form-group" style={{ margin: 0, minWidth: '160px', flex: 1 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Course / Subject</label>
-              <select 
-                className="form-select"
-                value={logPastSubjectId}
-                onChange={(e) => setLogPastSubjectId(e.target.value)}
-                style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}
-              >
-                {stats.map(s => (
-                  <option key={s.id} value={s.id}>{s.code} - {s.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group" style={{ margin: 0, minWidth: '140px', flex: 0.8 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Select Date</label>
-              <input 
-                type="date"
-                className="form-input"
-                value={logPastDate}
-                onChange={(e) => setLogPastDate(e.target.value)}
-                style={{ padding: '0.45rem 0.75rem', fontSize: '0.8rem' }}
-                required
-              />
-            </div>
-
-            <div className="form-group" style={{ margin: 0, minWidth: '220px', flex: 1.2 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Attendance Status</label>
-              <div style={{ display: 'flex', gap: '0.3rem' }}>
-                {(['present', 'absent', 'cancelled'] as const).map(st => (
-                  <button
-                    key={st}
-                    type="button"
-                    className="badge"
-                    onClick={() => setLogPastStatus(st)}
-                    style={{
-                      flex: 1,
-                      padding: '0.5rem 0',
-                      textTransform: 'capitalize',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      background: logPastStatus === st 
-                        ? (st === 'present' ? 'var(--success)' : st === 'absent' ? 'var(--primary)' : 'var(--warning)') 
-                        : 'var(--bg-app)',
-                      color: logPastStatus === st ? '#ffffff' : 'var(--text-secondary)',
-                      border: '1px solid var(--border-color)',
-                      transition: 'var(--transition)',
-                      borderRadius: 'var(--radius-md)'
-                    }}
-                  >
-                    {st}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button 
-              type="submit" 
-              className="btn-primary" 
-              style={{ padding: '0.55rem 1.2rem', fontSize: '0.85rem', minWidth: '110px' }}
-              disabled={logPastLoading}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.8rem' }}>
+          <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--bg-surface)', padding: '0.3rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+            <button
+              type="button"
+              onClick={() => setFilterMode('today')}
+              style={{
+                padding: '0.45rem 1rem',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+                background: filterMode === 'today' ? 'var(--primary)' : 'transparent',
+                color: filterMode === 'today' ? '#ffffff' : 'var(--text-secondary)',
+                transition: 'var(--transition)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem'
+              }}
             >
-              {logPastLoading ? 'Logging...' : 'Log Attendance'}
+              <Calendar size={14} />
+              <span>Today's Classes</span>
+              <span style={{ fontSize: '0.7rem', opacity: 0.85, background: filterMode === 'today' ? 'rgba(0,0,0,0.2)' : 'var(--bg-app)', padding: '0.1rem 0.4rem', borderRadius: '10px' }}>
+                {stats.filter(s => todaySubjectIds.has(s.id)).length}
+              </span>
             </button>
-          </form>
+
+            <button
+              type="button"
+              onClick={() => setFilterMode('all')}
+              style={{
+                padding: '0.45rem 1rem',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+                background: filterMode === 'all' ? 'var(--primary)' : 'transparent',
+                color: filterMode === 'all' ? '#ffffff' : 'var(--text-secondary)',
+                transition: 'var(--transition)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem'
+              }}
+            >
+              <BookOpen size={14} />
+              <span>All Subjects</span>
+              <span style={{ fontSize: '0.7rem', opacity: 0.85, background: filterMode === 'all' ? 'rgba(0,0,0,0.2)' : 'var(--bg-app)', padding: '0.1rem 0.4rem', borderRadius: '10px' }}>
+                {stats.length}
+              </span>
+            </button>
+          </div>
         </div>
       )}
 
+      {/* Main Content Area */}
       {stats.length === 0 ? (
         <div className="section-card" style={{ textAlign: 'center', padding: '4rem 1.5rem', color: 'var(--text-secondary)' }}>
           <AlertTriangle size={48} style={{ color: 'var(--warning)', marginBottom: '1rem', opacity: 0.8 }} />
@@ -272,9 +293,25 @@ export const Attendance: React.FC = () => {
             Before tracking attendance logs, you need to add your subjects first on the **Timetable** page.
           </p>
         </div>
+      ) : filterMode === 'today' && displayedStats.length === 0 ? (
+        <div className="section-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--text-secondary)' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '0.8rem' }}>🏖️</div>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-primary)' }}>No Classes Scheduled Today</h3>
+          <p style={{ fontSize: '0.85rem', marginBottom: '1.2rem', maxWidth: '420px', margin: '0 auto 1.2rem' }}>
+            You have no timetable lectures scheduled for today. Enjoy your break or switch to <strong>All Subjects</strong> to manage attendance across your entire semester.
+          </p>
+          <button 
+            type="button"
+            className="btn-secondary" 
+            onClick={() => setFilterMode('all')}
+            style={{ padding: '0.45rem 1rem', fontSize: '0.8rem' }}
+          >
+            View All Subjects 📚
+          </button>
+        </div>
       ) : (
         <div className="attendance-grid">
-          {stats.map(subject => {
+          {displayedStats.map(subject => {
             const radius = 34;
             const circumference = 2 * Math.PI * radius;
             const strokeDashoffset = circumference - (subject.currentPercentage / 100) * circumference;
@@ -295,9 +332,17 @@ export const Attendance: React.FC = () => {
                 {/* Subject Info Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <span className="badge" style={{ background: subject.color, color: '#1a0b14' }}>{subject.code}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <span className="badge" style={{ background: subject.color, color: '#1a0b14' }}>{subject.code}</span>
+                      {filterMode === 'today' && todaySubjectTimes[subject.id] && (
+                        <span className="badge" style={{ background: 'var(--bg-app)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', fontSize: '0.7rem', fontWeight: 700 }}>
+                          🕒 {todaySubjectTimes[subject.id].timeRange}
+                        </span>
+                      )}
+                    </div>
                     <h3 style={{ fontSize: '1.2rem', fontWeight: 750, marginTop: '0.3rem' }}>{subject.name}</h3>
                   </div>
+                  
                   <span 
                     className="badge" 
                     style={{ 
@@ -315,7 +360,7 @@ export const Attendance: React.FC = () => {
                   <div className="progress-ring-container">
                     <svg width="80" height="80">
                       <circle
-                        stroke="rgba(255,255,255,0.05)"
+                        stroke="rgba(0,0,0,0.06)"
                         fill="transparent"
                         strokeWidth="7"
                         r={radius}
@@ -344,7 +389,9 @@ export const Attendance: React.FC = () => {
                       Target threshold: <strong>{subject.targetAttendance}%</strong>
                     </span>
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      {isSafe ? (
+                      {subject.totalActive === 0 ? (
+                        'No lectures recorded yet'
+                      ) : isSafe ? (
                         <>
                           You can miss <strong style={{ color: 'var(--success)' }}>{subject.classesCanMiss}</strong> class{subject.classesCanMiss !== 1 ? 'es' : ''} safely.
                         </>
@@ -442,6 +489,78 @@ export const Attendance: React.FC = () => {
         </div>
       )}
 
+      {/* Relocated: Log Past Attendance Card */}
+      {stats.length > 0 && (
+        <div className="section-card" style={{ padding: '1.2rem 1.6rem', background: 'var(--bg-surface)' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '0.8rem', color: 'var(--text-primary)' }}>Log Past Attendance ✦</h3>
+          <form onSubmit={handleLogPastAttendance} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div className="form-group" style={{ margin: 0, minWidth: '160px', flex: 1 }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Course / Subject</label>
+              <select 
+                className="form-select"
+                value={logPastSubjectId}
+                onChange={(e) => setLogPastSubjectId(e.target.value)}
+                style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}
+              >
+                {stats.map(s => (
+                  <option key={s.id} value={s.id}>{s.code} - {s.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ margin: 0, minWidth: '140px', flex: 0.8 }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Select Date</label>
+              <input 
+                type="date"
+                className="form-input"
+                value={logPastDate}
+                onChange={(e) => setLogPastDate(e.target.value)}
+                style={{ padding: '0.45rem 0.75rem', fontSize: '0.8rem' }}
+                required
+              />
+            </div>
+
+            <div className="form-group" style={{ margin: 0, minWidth: '220px', flex: 1.2 }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Attendance Status</label>
+              <div style={{ display: 'flex', gap: '0.3rem' }}>
+                {(['present', 'absent', 'cancelled'] as const).map(st => (
+                  <button
+                    key={st}
+                    type="button"
+                    className="badge"
+                    onClick={() => setLogPastStatus(st)}
+                    style={{
+                      flex: 1,
+                      padding: '0.5rem 0',
+                      textTransform: 'capitalize',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      background: logPastStatus === st 
+                        ? (st === 'present' ? 'var(--success)' : st === 'absent' ? 'var(--danger)' : 'var(--warning)') 
+                        : 'var(--bg-app)',
+                      color: logPastStatus === st ? '#ffffff' : 'var(--text-secondary)',
+                      border: '1px solid var(--border-color)',
+                      transition: 'var(--transition)',
+                      borderRadius: 'var(--radius-md)'
+                    }}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button 
+              type="submit" 
+              className="btn-primary" 
+              style={{ padding: '0.55rem 1.2rem', fontSize: '0.85rem', minWidth: '110px' }}
+              disabled={logPastLoading}
+            >
+              {logPastLoading ? 'Logging...' : 'Log Attendance'}
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 };

@@ -38,6 +38,7 @@ export const Exams: React.FC = () => {
   const [location, setLocation] = useState<string>('');
   const [syllabus, setSyllabus] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Local study preparation checklist states
   // Format: { [examId]: string[] (completed topic names) }
@@ -52,7 +53,7 @@ export const Exams: React.FC = () => {
       ]);
 
       if (!exRes.ok || !subRes.ok) {
-        throw new Error('Failed to fetch exam schedule.');
+        throw new Error('Failed to load exams and courses.');
       }
 
       const exData = await exRes.json();
@@ -60,7 +61,6 @@ export const Exams: React.FC = () => {
 
       setExams(exData);
       setSubjects(subData);
-
       if (subData.length > 0) {
         setSelectedSubjectId(subData[0].id);
       }
@@ -86,7 +86,7 @@ export const Exams: React.FC = () => {
 
   // Handle Exam deletion
   const handleDeleteExam = async (id: string) => {
-    if (!window.confirm('Remove this exam from your timetable?')) return;
+    if (!window.confirm('Delete this scheduled exam?')) return;
     try {
       const res = await fetch(`${API_BASE_URL}/academic/exams/${id}`, {
         method: 'DELETE',
@@ -114,12 +114,15 @@ export const Exams: React.FC = () => {
     e.preventDefault();
     setFormError(null);
 
-    if (!title || !selectedSubjectId || !examDate || !startTime) {
+    if (!title.trim() || !selectedSubjectId || !examDate || !startTime) {
       setFormError('Title, subject, date, and time are required.');
       return;
     }
 
+    if (isSubmitting) return;
+
     try {
+      setIsSubmitting(true);
       const res = await fetch(`${API_BASE_URL}/academic/exams`, {
         method: 'POST',
         headers: {
@@ -127,12 +130,12 @@ export const Exams: React.FC = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          title,
+          title: title.trim(),
           subject_id: selectedSubjectId,
           date: examDate,
           start_time: startTime,
-          location,
-          syllabus
+          location: location.trim(),
+          syllabus: syllabus.trim()
         })
       });
 
@@ -141,7 +144,10 @@ export const Exams: React.FC = () => {
         throw new Error(data.error || 'Failed to create exam.');
       }
 
-      setExams(prev => [...prev, data]);
+      setExams(prev => {
+        if (prev.some(item => item.id === data.id)) return prev;
+        return [...prev, data];
+      });
       
       // Clear forms
       setTitle('');
@@ -151,6 +157,8 @@ export const Exams: React.FC = () => {
       setShowModal(false);
     } catch (err: any) {
       setFormError(err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -474,8 +482,13 @@ export const Exams: React.FC = () => {
                 />
               </div>
 
-              <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
-                Schedule Exam
+              <button 
+                type="submit" 
+                className="btn-primary" 
+                disabled={isSubmitting}
+                style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem', opacity: isSubmitting ? 0.7 : 1 }}
+              >
+                {isSubmitting ? 'Scheduling Exam...' : 'Schedule Exam'}
               </button>
             </form>
           </div>

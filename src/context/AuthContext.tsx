@@ -8,6 +8,7 @@ interface User {
   username: string;
   email: string;
   avatar_url?: string | null;
+  hasGeminiKey?: boolean;
 }
 
 interface AuthContextType {

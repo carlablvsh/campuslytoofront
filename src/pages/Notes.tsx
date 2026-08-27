@@ -415,7 +415,7 @@ export const Notes: React.FC = () => {
                   required
                 />
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                  Maximum file size: 5MB. PDF text elements will be automatically parsed for AI queries.
+                  Maximum file size: 5MB. Support for PDF, TXT, and Markdown files.
                 </span>
               </div>
 
@@ -448,16 +448,6 @@ export const Notes: React.FC = () => {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               <span>Uploaded {new Date(viewedNote.created_at).toLocaleString()}</span>
-              <button 
-                className="btn-primary" 
-                style={{ padding: '0.5rem 1rem' }}
-                onClick={() => {
-                  setShowViewModal(false);
-                  window.dispatchEvent(new CustomEvent('switchTab', { detail: 'ai' }));
-                }}
-              >
-                Ask AI About Note
-              </button>
             </div>
           </div>
         </div>

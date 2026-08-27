@@ -3,12 +3,13 @@ import {
   Calendar, 
   GraduationCap, 
   CheckSquare, 
-  FileText, 
+  // FileText,
   Clock, 
-  Bot, 
+  // Bot,
   ArrowRight,
   Sparkles,
-  X
+  X,
+  Coffee
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -47,28 +48,28 @@ const CozyStarSVG: React.FC<{ size?: number; color?: string; style?: React.CSSPr
 );
 
 // Cute AI Robot
-const CuteRobotSVG: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 120, style }) => (
-  <svg width={size} height={size + 20} viewBox="0 0 120 140" style={{ overflow: 'visible', ...style }}>
-    <rect x="25" y="45" width="70" height="60" rx="18" fill="#ffffff" stroke="#ff7899" strokeWidth="2.5" />
-    <rect x="33" y="53" width="54" height="44" rx="12" fill="#fff0f3" />
-    <line x1="60" y1="45" x2="60" y2="30" stroke="#ff7899" strokeWidth="3" strokeLinecap="round" />
-    <circle cx="60" cy="27" r="4" fill="#ff5e84" />
-    <path d="M54 38 C51 34, 48 35, 50 38 C52 41, 54 39, 54 38 Z" fill="#ffd1dc" stroke="#ff7899" strokeWidth="1" />
-    <path d="M66 38 C69 34, 72 35, 70 38 C68 41, 66 39, 66 38 Z" fill="#ffd1dc" stroke="#ff7899" strokeWidth="1" />
-    <circle cx="60" cy="38" r="1.5" fill="#ff7899" />
-    <circle cx="48" cy="72" r="5" fill="#2e1622" />
-    <circle cx="46" cy="70" r="1.5" fill="#ffffff" />
-    <circle cx="72" cy="72" r="5" fill="#2e1622" />
-    <circle cx="70" cy="70" r="1.5" fill="#ffffff" />
-    <circle cx="40" cy="80" r="3" fill="#ffd1dc" />
-    <circle cx="80" cy="80" r="3" fill="#ffd1dc" />
-    <path d="M57 80 Q60 82 63 80" stroke="#2e1622" strokeWidth="1.5" strokeLinecap="round" fill="transparent" />
-    <rect x="15" y="60" width="8" height="22" rx="4" fill="#ffffff" stroke="#ff7899" strokeWidth="2" />
-    <rect x="97" y="60" width="8" height="22" rx="4" fill="#ffffff" stroke="#ff7899" strokeWidth="2" />
-    <rect x="42" y="105" width="12" height="15" rx="5" fill="#ffffff" stroke="#ff7899" strokeWidth="2" />
-    <rect x="66" y="105" width="12" height="15" rx="5" fill="#ffffff" stroke="#ff7899" strokeWidth="2" />
-  </svg>
-);
+// const CuteRobotSVG: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 120, style }) => (
+//   <svg width={size} height={size + 20} viewBox="0 0 120 140" style={{ overflow: 'visible', ...style }}>
+//     <rect x="25" y="45" width="70" height="60" rx="18" fill="#ffffff" stroke="#ff7899" strokeWidth="2.5" />
+//     <rect x="33" y="53" width="54" height="44" rx="12" fill="#fff0f3" />
+//     <line x1="60" y1="45" x2="60" y2="30" stroke="#ff7899" strokeWidth="3" strokeLinecap="round" />
+//     <circle cx="60" cy="27" r="4" fill="#ff5e84" />
+//     <path d="M54 38 C51 34, 48 35, 50 38 C52 41, 54 39, 54 38 Z" fill="#ffd1dc" stroke="#ff7899" strokeWidth="1" />
+//     <path d="M66 38 C69 34, 72 35, 70 38 C68 41, 66 39, 66 38 Z" fill="#ffd1dc" stroke="#ff7899" strokeWidth="1" />
+//     <circle cx="60" cy="38" r="1.5" fill="#ff7899" />
+//     <circle cx="48" cy="72" r="5" fill="#2e1622" />
+//     <circle cx="46" cy="70" r="1.5" fill="#ffffff" />
+//     <circle cx="72" cy="72" r="5" fill="#2e1622" />
+//     <circle cx="70" cy="70" r="1.5" fill="#ffffff" />
+//     <circle cx="40" cy="80" r="3" fill="#ffd1dc" />
+//     <circle cx="80" cy="80" r="3" fill="#ffd1dc" />
+//     <path d="M57 80 Q60 82 63 80" stroke="#2e1622" strokeWidth="1.5" strokeLinecap="round" fill="transparent" />
+//     <rect x="15" y="60" width="8" height="22" rx="4" fill="#ffffff" stroke="#ff7899" strokeWidth="2" />
+//     <rect x="97" y="60" width="8" height="22" rx="4" fill="#ffffff" stroke="#ff7899" strokeWidth="2" />
+//     <rect x="42" y="105" width="12" height="15" rx="5" fill="#ffffff" stroke="#ff7899" strokeWidth="2" />
+//     <rect x="66" y="105" width="12" height="15" rx="5" fill="#ffffff" stroke="#ff7899" strokeWidth="2" />
+//   </svg>
+// );
 
 // Cute Student Girl Studying
 const CuteStudentGirlSVG: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 130, style }) => (
@@ -158,9 +159,8 @@ const DashboardAppMockup: React.FC = () => (
         { label: 'Attendance', icon: GraduationCap },
         { label: 'Tasks', icon: CheckSquare },
         { label: 'Exams', icon: Calendar },
-        { label: 'Notes', icon: FileText },
         { label: 'Calendar', icon: Calendar },
-        { label: 'AI Assistant', icon: Bot }
+        { label: 'Study Room', icon: Coffee }
       ].map((item, i) => {
         const Icon = item.icon;
         return (
@@ -330,9 +330,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     { id: 'attendance', label: 'Attendance', icon: GraduationCap, desc: 'Track attendance and stay consistent' },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare, desc: 'Organize tasks and never miss a deadline' },
     { id: 'exams', label: 'Exams', icon: Sparkles, desc: 'Prepare better with smart exam tracking' },
-    { id: 'notes', label: 'Notes', icon: FileText, desc: 'Save, organize and review your notes' },
     { id: 'calendar', label: 'Calendar', icon: Calendar, desc: 'Plan your days and achieve more' },
-    { id: 'ai', label: 'AI Assistant', icon: Bot, desc: 'Get study help, anytime, anywhere' },
+    { id: 'studyroom', label: 'Study Room', icon: Coffee, desc: 'Listen to lo-fi ambient audio and study peacefully' }
   ];
 
   return (
@@ -398,7 +397,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="landing-menu-links" style={{ display: 'flex', gap: '1.8rem', fontSize: '0.85rem', fontWeight: 700, color: '#6a521a' }}>
           <span style={{ cursor: 'pointer' }} onClick={() => scrollToSection('features-section')}>Features</span>
           <span style={{ cursor: 'pointer' }} onClick={() => scrollToSection('students-section')}>Reviews</span>
-          <span style={{ cursor: 'pointer' }} onClick={() => scrollToSection('ai-assistant-section')}>AI Companion</span>
           <span style={{ cursor: 'pointer' }} onClick={() => setCurrentView('pricing')}>Pricing</span>
           <span style={{ cursor: 'pointer' }} onClick={() => setCurrentView('support')}>Support</span>
           <span style={{ cursor: 'pointer' }} onClick={() => scrollToSection('about-section')}>About</span>
@@ -558,7 +556,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               Cozy plans for bright minds 🌸
             </h1>
             <p style={{ color: '#8c707a', fontSize: '1.05rem', maxWidth: '600px', margin: '0 auto', lineHeight: 1.6 }}>
-              Whether you want a simple tracker or unlimited AI study assistance, we have a plan crafted for your success.
+              Whether you want a simple tracker or advanced planning tools, we have a plan crafted for your success.
             </p>
           </div>
 
@@ -579,10 +577,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               position: 'relative'
             }}>
               <div>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#2e1622', margin: '0 0 0.5rem 0' }}>Cozy Learner</h3>
-                <p style={{ fontSize: '0.82rem', color: '#8c707a', margin: '0 0 1.5rem 0' }}>Perfect for tracking your daily classes and basic attendance safety margins.</p>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#2e1622', margin: '0 0 0.5rem 0' }}>Free</h3>
+                <p style={{ fontSize: '0.82rem', color: '#8c707a', margin: '0 0 1.5rem 0' }}>everything you need to organize college life.</p>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.1rem', marginBottom: '2rem' }}>
-                  <span style={{ fontSize: '2.5rem', fontWeight: 900, color: '#2e1622' }}>$0</span>
+                  <span style={{ fontSize: '2.5rem', fontWeight: 900, color: '#2e1622' }}>₹0</span>
                   <span style={{ fontSize: '0.85rem', color: '#8c707a', fontWeight: 600 }}>/ month</span>
                 </div>
 
@@ -590,29 +588,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.8rem', fontSize: '0.85rem', color: '#5a424a' }}>
                   <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> Standard weekly schedule (up to 8 classes)
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> timetable & attendance
                   </li>
                   <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> Attendance safety margin calculator
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> tasks and exams
                   </li>
                   <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> Tasks & exams logging lists
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> study room
                   </li>
                   <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> Save up to 5 course documents/notes
-                  </li>
-                  <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> Standard study companion AI responses
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> unified academic calendar
                   </li>
                 </ul>
               </div>
 
               <div style={{ marginTop: '2.5rem' }}>
-                {/* DEVELOPER HOOK: To hook up your custom pricing link:
-                    1. For free accounts, this just points to the normal SignUp trigger.
-                    2. If you want a sign-up redirect with query parameter, you can use:
-                       onClick={() => window.location.href = '/signup?plan=free'}
-                */}
                 <button 
                   onClick={onSignUpClick}
                   style={{
@@ -665,78 +655,63 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 boxShadow: '0 4px 10px rgba(255, 94, 132, 0.2)'
               }}>
                 <CuteBowSVG size={12} style={{ filter: 'brightness(0) invert(1)' }} />
-                <span>POPULAR CHOICE</span>
+                <span>COMING SOON</span>
               </div>
 
               <div>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#2e1622', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                   Scholar Pro <Sparkles size={16} style={{ color: '#ff7899' }} />
                 </h3>
-                <p style={{ fontSize: '0.82rem', color: '#8c707a', margin: '0 0 1.5rem 0' }}>Unlock unlimited file query limits, robust multi-chunk AI context, and smart notifications.</p>
+                <p style={{ fontSize: '0.82rem', color: '#8c707a', margin: '0 0 1.5rem 0' }}>more scheduler customizability and advanced planning.</p>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.1rem', marginBottom: '2rem' }}>
-                  <span style={{ fontSize: '2.5rem', fontWeight: 900, color: '#2e1622' }}>$4.99</span>
-                  <span style={{ fontSize: '0.85rem', color: '#8c707a', fontWeight: 600 }}>/ month</span>
+                  <span style={{ fontSize: '2.2rem', fontWeight: 900, color: '#2e1622' }}>coming soon</span>
                 </div>
 
                 <hr style={{ border: 0, borderTop: '1px solid rgba(255, 120, 153, 0.12)', marginBottom: '1.8rem' }} />
 
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.8rem', fontSize: '0.85rem', color: '#5a424a' }}>
                   <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> <strong>Unlimited</strong> timetable classes with collision override
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>-</span> custom holiday break periods
                   </li>
                   <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> <strong>Unlimited</strong> PDF, TXT, MD note uploads (up to 5MB each)
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>-</span> custom recurring schedules
                   </li>
                   <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> <strong>Enhanced TF-IDF RAG</strong> scanning up to 8 contextual chunks
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>-</span> expanded document/file features
                   </li>
                   <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> <strong>Infinite</strong> AI Companion study tokens
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>-</span> smart class exception tracking
                   </li>
                   <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> <strong>Persistent unread notifications</strong> system sync
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>-</span> smart notifications
                   </li>
                   <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>✓</span> Priority features update access & themes
+                    <span style={{ color: '#ff7899', fontWeight: 'bold' }}>-</span> priority features
                   </li>
                 </ul>
               </div>
 
               <div style={{ marginTop: '2.5rem' }}>
-                {/* DEVELOPER HOOK: To connect with payment gateways (Stripe, Lemonsqueezy, Paddle, etc.):
-                    1. Replace the onClick handler below to redirect users to your payment provider checkout page link.
-                       Example:
-                       onClick={() => window.open('https://buy.stripe.com/test_6oEg1d9yX5c2a1e', '_blank')}
-                    
-                    2. If you are handling custom customer attributes from backend, trigger a fetch request:
-                       onClick={async () => {
-                         const res = await fetch('/api/billing/checkout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-                         const data = await res.json();
-                         window.location.href = data.checkoutUrl;
-                       }}
-                */}
                 <button 
-                  onClick={onSignUpClick}
+                  disabled
                   style={{
                     width: '100%',
-                    background: 'linear-gradient(135deg, #ff7899, #ff5e84)',
-                    color: '#ffffff',
+                    background: '#e5e5e5',
+                    color: '#7a7a7a',
                     border: 'none',
                     borderRadius: '25px',
                     padding: '0.8rem',
                     fontSize: '0.88rem',
                     fontWeight: 800,
-                    cursor: 'pointer',
+                    cursor: 'not-allowed',
                     textAlign: 'center',
-                    boxShadow: '0 4px 12px rgba(255, 94, 132, 0.2)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.3rem'
                   }}
-                  className="btn-hero-primary"
                 >
-                  Upgrade to Scholar Pro <ArrowRight size={14} />
+                  Coming Soon
                 </button>
               </div>
             </div>
@@ -751,8 +726,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               {[
                 { q: "Can I cancel my premium subscription at any time?", a: "Yes, you can cancel your subscription inside your settings pane anytime. Your premium access will continue to stay active until the end of the current billing cycle." },
-                { q: "What types of notes can I upload to Campusly AI?", a: "We securely support PDF, TXT, and Markdown (.md) documents. Each file can be up to 5MB in size." },
-                { q: "How does the TF-IDF AI study assistant work?", a: "When you upload files, Campusly indexes terms. When you query the bot, we calculate relevance matrices using Term Frequency-Inverse Document Frequency weight parameters and supply up to 8 content chunks as direct source references to Gemini." }
+                { q: "How does the integrated calendar schedule work?", a: "Campusly automatically generates your weekly class schedule, skips them during your vacation breaks, and overlays your tasks, exams, and extracurricular events in one place." },
+                { q: "Can I customize recurring schedules?", a: "Yes, you can schedule classes that occur weekly, bi-weekly, or on custom selected days of the week, with optional start and end dates." }
               ].map((faq, idx) => (
                 <div key={idx} style={{ background: 'var(--bg-app)', padding: '1rem 1.2rem', borderRadius: '12px', border: '1px solid rgba(255, 120, 153, 0.05)' }}>
                   <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#2e1622', display: 'block', marginBottom: '0.3rem' }}>{faq.q}</span>
@@ -1156,8 +1131,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         gap: '4rem'
       }} className="responsive-grid">
         
-        {/* Left Column: AI Study Assistant */}
-        <div id="ai-assistant-section" style={{
+        {/* Left Column: Smart Integrated Calendar */}
+        <div id="calendar-section" style={{
           background: 'linear-gradient(135deg, #fffafc, #fffdfd)',
           border: '1.5px solid #ffd1dc',
           borderRadius: '24px',
@@ -1170,13 +1145,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         }}>
           <div>
             <span style={{ fontSize: '0.74rem', color: '#ff5e84', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.2rem', marginBottom: '0.6rem' }}>
-              <Sparkles size={11} /> AI Study Assistant
+              <Calendar size={11} /> Smart Integrated Calendar
             </span>
             <h2 style={{ fontSize: '2.2rem', fontWeight: 800, fontFamily: 'var(--font-serif)', color: '#2e1622', margin: '0 0 0.8rem 0' }}>
-              Your 24/7 study buddy
+              One unified schedule
             </h2>
             <p style={{ color: '#8c707a', fontSize: '0.92rem', lineHeight: 1.6, marginBottom: '2rem' }}>
-              Ask doubts, get explanations, summarize notes, and more. Campusly AI is always here to help you learn better and faster.
+              Keep track of classes, tasks, assignments, exams, and personal events in one cohesive dashboard. Classes are automatically paused during your custom vacation breaks.
             </p>
             <button 
               onClick={onSignUpClick}
@@ -1195,11 +1170,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 boxShadow: '0 4px 12px rgba(255, 120, 153, 0.15)'
               }}
             >
-              Try AI Assistant <ArrowRight size={13} />
+              Explore Smart Calendar <ArrowRight size={13} />
             </button>
           </div>
 
-          {/* Graphic with bubbles & bot */}
+          {/* Graphic with bubbles & preview */}
           <div style={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
@@ -1207,13 +1182,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             marginTop: '2.5rem', 
             position: 'relative' 
           }}>
-            {/* Action chat bubbles */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingBottom: '0.8rem' }}>
-              <span style={{ fontSize: '0.62rem', background: '#fff', border: '1px solid #ffd1dc', padding: '0.35rem 0.65rem', borderRadius: '15px 15px 15px 0', fontWeight: 700, color: 'var(--primary)' }}>Explain this topic to me</span>
-              <span style={{ fontSize: '0.62rem', background: '#fff', border: '1px solid #ffd1dc', padding: '0.35rem 0.65rem', borderRadius: '15px 15px 15px 0', fontWeight: 700, color: 'var(--primary)', marginLeft: '1rem' }}>Summarize my notes</span>
-              <span style={{ fontSize: '0.62rem', background: '#fff', border: '1px solid #ffd1dc', padding: '0.35rem 0.65rem', borderRadius: '15px 15px 15px 0', fontWeight: 700, color: 'var(--primary)' }}>Quiz me on this chapter</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingBottom: '0.8rem', width: '100%' }}>
+              <span style={{ fontSize: '0.62rem', background: '#fff', border: '1px solid #ffd1dc', padding: '0.35rem 0.65rem', borderRadius: '15px 15px 15px 0', fontWeight: 700, color: 'var(--primary)' }}>📅 Mon: Math Class (paused for break)</span>
+              <span style={{ fontSize: '0.62rem', background: '#fff', border: '1px solid #ffd1dc', padding: '0.35rem 0.65rem', borderRadius: '15px 15px 15px 0', fontWeight: 700, color: 'var(--primary)', marginLeft: '1.2rem' }}>📝 Wed: Physics Lab Assignment due</span>
+              <span style={{ fontSize: '0.62rem', background: '#fff', border: '1px solid #ffd1dc', padding: '0.35rem 0.65rem', borderRadius: '15px 15px 15px 0', fontWeight: 700, color: 'var(--primary)' }}>💼 Fri: Part-time job shift (14:00 - 18:00)</span>
             </div>
-            <CuteRobotSVG size={90} />
           </div>
         </div>
 
@@ -1292,7 +1265,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&q=80"
             },
             {
-              text: "The AI assistant helps me so much with doubts and summaries. It's like having a study buddy 24/7!",
+              text: "The Study Room with the Pomodoro timer and Spotify integration keeps me totally locked in during exam prep! ☕",
               name: "Arjun M.",
               sub: "3rd Year, B.Sc",
               img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=64&q=80"

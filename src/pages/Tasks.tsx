@@ -35,6 +35,7 @@ export const Tasks: React.FC = () => {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [dueDate, setDueDate] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const fetchData = async () => {
     try {
@@ -45,7 +46,7 @@ export const Tasks: React.FC = () => {
       ]);
 
       if (!assRes.ok || !subRes.ok) {
-        throw new Error('Failed to fetch assignments and course details.');
+        throw new Error('Failed to load assignments.');
       }
 
       const assData = await assRes.json();
@@ -53,13 +54,12 @@ export const Tasks: React.FC = () => {
 
       setAssignments(assData);
       setSubjects(subData);
-
       if (subData.length > 0) {
         setSelectedSubjectId(subData[0].id);
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Error loading tasks.');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -71,9 +71,9 @@ export const Tasks: React.FC = () => {
     }
   }, [token]);
 
-  // Toggle status
+  // Update status (pending/completed)
   const handleToggleStatus = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'pending' ? 'completed' : 'pending';
+    const nextStatus = currentStatus === 'pending' ? 'completed' : 'pending';
     try {
       const res = await fetch(`${API_BASE_URL}/academic/assignments/${id}`, {
         method: 'PUT',
@@ -81,11 +81,11 @@ export const Tasks: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: nextStatus })
       });
 
       if (res.ok) {
-        const updated: Assignment = await res.json();
+        const updated = await res.json();
         setAssignments(prev => prev.map(item => item.id === id ? updated : item));
       }
     } catch (err) {
@@ -115,12 +115,15 @@ export const Tasks: React.FC = () => {
     e.preventDefault();
     setFormError(null);
 
-    if (!title || !selectedSubjectId || !dueDate) {
+    if (!title.trim() || !selectedSubjectId || !dueDate) {
       setFormError('Title, subject, and due date are required.');
       return;
     }
 
+    if (isSubmitting) return;
+
     try {
+      setIsSubmitting(true);
       const res = await fetch(`${API_BASE_URL}/academic/assignments`, {
         method: 'POST',
         headers: {
@@ -128,8 +131,8 @@ export const Tasks: React.FC = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          title,
-          description,
+          title: title.trim(),
+          description: description.trim(),
           subject_id: selectedSubjectId,
           due_date: dueDate
         })
@@ -140,7 +143,10 @@ export const Tasks: React.FC = () => {
         throw new Error(data.error || 'Failed to create task.');
       }
 
-      setAssignments(prev => [...prev, data]);
+      setAssignments(prev => {
+        if (prev.some(item => item.id === data.id)) return prev;
+        return [...prev, data];
+      });
       
       // Clear inputs
       setTitle('');
@@ -149,6 +155,8 @@ export const Tasks: React.FC = () => {
       setShowModal(false);
     } catch (err: any) {
       setFormError(err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -369,8 +377,13 @@ export const Tasks: React.FC = () => {
                 />
               </div>
 
-              <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
-                Create Task
+              <button 
+                type="submit" 
+                className="btn-primary" 
+                disabled={isSubmitting}
+                style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem', opacity: isSubmitting ? 0.7 : 1 }}
+              >
+                {isSubmitting ? 'Saving Assignment...' : 'Create Assignment'}
               </button>
             </form>
           </div>
