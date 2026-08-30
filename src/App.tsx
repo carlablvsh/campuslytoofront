@@ -12,6 +12,7 @@ import { CalendarView } from './pages/Calendar';
 import { LandingPage } from './pages/LandingPage';
 import { StudyRoom } from './pages/StudyRoom';
 import { CampusXP } from './pages/CampusXP';
+// Campusly Client v1.0.1 - Fullscreen Study Room & Navigation Update
 
 import { 
   Sparkles, 
