@@ -230,26 +230,72 @@
 /* Animations & Motion System */
 @keyframes float-slow {
   0%, 100% {
-    transform: translateY(0px);
+    transform: translateY(0px) rotate(0deg);
   }
   50% {
-    transform: translateY(-8px);
+    transform: translateY(-10px) rotate(1deg);
   }
 }
 
 @keyframes float-reverse {
   0%, 100% {
-    transform: translateY(0px);
+    transform: translateY(0px) rotate(0deg);
   }
   50% {
-    transform: translateY(7px);
+    transform: translateY(9px) rotate(-1deg);
+  }
+}
+
+@keyframes aurora-float {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(25px, -20px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 25px) scale(0.92);
+  }
+}
+
+@keyframes petal-fall-1 {
+  0% {
+    transform: translate3d(0, -30px, 0) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  85% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate3d(120px, 110vh, 0) rotate(420deg);
+    opacity: 0;
+  }
+}
+
+@keyframes petal-fall-2 {
+  0% {
+    transform: translate3d(0, -30px, 0) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.75;
+  }
+  85% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translate3d(-100px, 110vh, 0) rotate(-380deg);
+    opacity: 0;
   }
 }
 
 @keyframes fade-in-up {
   0% {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(22px);
   }
   100% {
     opacity: 1;
@@ -263,6 +309,27 @@
   }
   50% {
     box-shadow: 0 0 45px rgba(244, 114, 182, 0.45);
+  }
+}
+
+@keyframes ring-pulse {
+  0%, 100% {
+    box-shadow: 0 0 25px rgba(244, 114, 182, 0.25), inset 0 0 15px rgba(244, 114, 182, 0.15);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 45px rgba(244, 114, 182, 0.5), inset 0 0 25px rgba(244, 114, 182, 0.3);
+    transform: scale(1.03);
+  }
+}
+
+@keyframes badge-shimmer {
+  0%, 100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.15);
   }
 }
 
@@ -285,12 +352,67 @@
   animation: float-reverse 7s ease-in-out infinite;
 }
 
+.animate-aurora-1 {
+  animation: aurora-float 12s ease-in-out infinite;
+}
+
+.animate-aurora-2 {
+  animation: aurora-float 16s ease-in-out infinite reverse;
+}
+
 .animate-fade-in-up {
-  animation: fade-in-up 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fade-in-up 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-page-enter {
   animation: page-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-ring-pulse {
+  animation: ring-pulse 4.5s ease-in-out infinite;
+}
+
+.hover-lift-card {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-lift-card:hover {
+  transform: translateY(-6px) scale(1.015);
+  box-shadow: 0 16px 36px -8px rgba(244, 114, 182, 0.18), 0 4px 14px rgba(45, 21, 39, 0.06) !important;
+  border-color: rgba(244, 114, 182, 0.45) !important;
+}
+
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 40%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    rgba(255, 255, 255, 0) 20%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0) 80%
+  );
+  transform: rotate(25deg);
+  transition: all 0.75s ease;
+  pointer-events: none;
+}
+
+.btn-shimmer:hover::after {
+  left: 140%;
+}
+
+.btn-shimmer:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(244, 114, 182, 0.35);
 }
 
 /* Atmospheric Editorial Classes for Internal Campusly */

@@ -31,6 +31,42 @@ const PetalMarkSVG: React.FC<{ size?: number; className?: string; style?: React.
   </svg>
 );
 
+const PetalParticles: React.FC = () => (
+  <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 1 }}>
+    {[
+      { left: '10%', delay: '0s', duration: '14s', anim: 'petal-fall-1', size: 16, opacity: 0.75 },
+      { left: '28%', delay: '3.5s', duration: '17s', anim: 'petal-fall-2', size: 12, opacity: 0.6 },
+      { left: '52%', delay: '1.2s', duration: '15s', anim: 'petal-fall-1', size: 14, opacity: 0.8 },
+      { left: '74%', delay: '5.5s', duration: '19s', anim: 'petal-fall-2', size: 18, opacity: 0.65 },
+      { left: '88%', delay: '2.2s', duration: '13s', anim: 'petal-fall-1', size: 11, opacity: 0.7 },
+      { left: '42%', delay: '7s', duration: '16s', anim: 'petal-fall-1', size: 15, opacity: 0.65 },
+    ].map((p, idx) => (
+      <div 
+        key={idx}
+        style={{
+          position: 'absolute',
+          top: '-30px',
+          left: p.left,
+          animation: `${p.anim} ${p.duration} ease-in-out infinite`,
+          animationDelay: p.delay,
+          opacity: p.opacity,
+          pointerEvents: 'none'
+        }}
+      >
+        <svg width={p.size} height={p.size} viewBox="0 0 24 24" fill="none">
+          <path d="M12 2C8.5 7.5 4 10.5 4 14.5C4 18.5 7.5 22 12 22C16.5 22 20 18.5 20 14.5C20 10.5 15.5 7.5 12 2Z" fill="url(#petal-particle-grad)" />
+          <defs>
+            <linearGradient id="petal-particle-grad" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#f472b6" />
+              <stop offset="1" stopColor="#fb7185" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+    ))}
+  </div>
+);
+
 export const LandingPage: React.FC<LandingPageProps> = ({ 
   onLoginClick, 
   onSignUpClick = onLoginClick, 
@@ -190,11 +226,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Subtle grid background */}
         <div className="rule-grid" style={{ position: 'absolute', inset: 0, opacity: 0.5, pointerEvents: 'none' }} />
         
-        {/* Ambient rose mist orbs */}
-        <div style={{ position: 'absolute', top: '15%', right: '10%', width: '380px', height: '380px', borderRadius: '50%', background: 'rgba(244, 114, 182, 0.18)', filter: 'blur(90px)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '10%', left: '5%', width: '420px', height: '420px', borderRadius: '50%', background: 'rgba(233, 213, 255, 0.25)', filter: 'blur(100px)', pointerEvents: 'none' }} />
+        {/* Falling floating sakura petal particles */}
+        <PetalParticles />
 
-        <div style={{ position: 'relative', maxWidth: '1240px', width: '100%', margin: '0 auto', display: 'grid', gridTemplateColumns: '1.05fr 0.95fr', gap: '3.5rem', alignItems: 'center' }}>
+        {/* Ambient breathing aurora rose/lavender mist orbs */}
+        <div className="animate-aurora-1" style={{ position: 'absolute', top: '15%', right: '10%', width: '420px', height: '420px', borderRadius: '50%', background: 'rgba(244, 114, 182, 0.22)', filter: 'blur(90px)', pointerEvents: 'none' }} />
+        <div className="animate-aurora-2" style={{ position: 'absolute', bottom: '10%', left: '5%', width: '450px', height: '450px', borderRadius: '50%', background: 'rgba(233, 213, 255, 0.3)', filter: 'blur(100px)', pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', maxWidth: '1240px', width: '100%', margin: '0 auto', display: 'grid', gridTemplateColumns: '1.05fr 0.95fr', gap: '3.5rem', alignItems: 'center', zIndex: 2 }}>
           
           {/* Left: Editorial Hero Content with Staggered Fade-in */}
           <div className="animate-fade-in-up" style={{ display: 'flex', flexDirection: 'column', gap: '1.6rem' }}>
@@ -235,7 +274,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
               <button 
                 onClick={onSignUpClick}
-                className="interactive-pill-btn"
+                className="interactive-pill-btn btn-shimmer"
                 style={{
                   background: 'var(--plum)',
                   color: 'var(--cream)',
@@ -310,12 +349,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             {/* Floating Glass Card 1: Upcoming Lecture */}
             <div 
-              className="animate-float-slow"
+              className="animate-float-slow hover-lift-card"
               style={{
                 position: 'absolute',
                 top: '-18px',
                 left: '-24px',
-                background: 'rgba(255, 253, 249, 0.88)',
+                background: 'rgba(255, 253, 249, 0.9)',
                 border: '1px solid var(--line)',
                 borderRadius: '18px',
                 padding: '1rem 1.2rem',
@@ -338,12 +377,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             {/* Floating Glass Card 2: Attendance Margin Gauge */}
             <div 
-              className="animate-float-reverse"
+              className="animate-float-reverse hover-lift-card"
               style={{
                 position: 'absolute',
                 bottom: '-28px',
                 right: '-16px',
-                background: 'rgba(255, 253, 249, 0.92)',
+                background: 'rgba(255, 253, 249, 0.94)',
                 border: '1px solid var(--line)',
                 borderRadius: '20px',
                 padding: '1.2rem 1.4rem',
@@ -408,7 +447,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
 
               {/* Floating Quote Card */}
-              <div style={{
+              <div className="hover-lift-card" style={{
                 position: 'absolute',
                 bottom: '24px',
                 left: '-20px',
@@ -457,7 +496,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               {/* 3 Pillars List */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem', marginTop: '0.5rem' }}>
                 
-                <div style={{ display: 'flex', gap: '1.2rem', padding: '1.2rem', background: 'var(--pearl)', border: '1px solid var(--line)', borderRadius: '18px', boxShadow: 'var(--shadow-soft)' }}>
+                <div className="hover-lift-card" style={{ display: 'flex', gap: '1.2rem', padding: '1.2rem', background: 'var(--pearl)', border: '1px solid var(--line)', borderRadius: '18px', boxShadow: 'var(--shadow-soft)' }}>
                   <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'var(--blush)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--petal)', flexShrink: 0 }}>
                     <Compass size={20} />
                   </div>
@@ -469,7 +508,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '1.2rem', padding: '1.2rem', background: 'var(--pearl)', border: '1px solid var(--line)', borderRadius: '18px', boxShadow: 'var(--shadow-soft)' }}>
+                <div className="hover-lift-card" style={{ display: 'flex', gap: '1.2rem', padding: '1.2rem', background: 'var(--pearl)', border: '1px solid var(--line)', borderRadius: '18px', boxShadow: 'var(--shadow-soft)' }}>
                   <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'rgba(153, 246, 228, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0d9488', flexShrink: 0 }}>
                     <Sparkles size={20} />
                   </div>
@@ -481,7 +520,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '1.2rem', padding: '1.2rem', background: 'var(--pearl)', border: '1px solid var(--line)', borderRadius: '18px', boxShadow: 'var(--shadow-soft)' }}>
+                <div className="hover-lift-card" style={{ display: 'flex', gap: '1.2rem', padding: '1.2rem', background: 'var(--pearl)', border: '1px solid var(--line)', borderRadius: '18px', boxShadow: 'var(--shadow-soft)' }}>
                   <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'rgba(233, 213, 255, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7c3aed', flexShrink: 0 }}>
                     <Coffee size={20} />
                   </div>
@@ -512,7 +551,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       }}>
         {/* Deep background grid & radial sheen */}
         <div className="rule-grid" style={{ position: 'absolute', inset: 0, opacity: 0.15, pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '-50px', left: '-50px', width: '450px', height: '450px', borderRadius: '50%', background: 'rgba(244, 114, 182, 0.14)', filter: 'blur(120px)', pointerEvents: 'none' }} />
+        <div className="animate-aurora-1" style={{ position: 'absolute', bottom: '-50px', left: '-50px', width: '450px', height: '450px', borderRadius: '50%', background: 'rgba(244, 114, 182, 0.18)', filter: 'blur(120px)', pointerEvents: 'none' }} />
 
         <div style={{ maxWidth: '1140px', margin: '0 auto', position: 'relative' }}>
           
@@ -541,6 +580,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <button
                 key={day}
                 onClick={() => setSelectedDay(idx)}
+                className="interactive-pill-btn"
                 style={{
                   background: selectedDay === idx ? 'var(--cream)' : 'rgba(255, 255, 255, 0.07)',
                   color: selectedDay === idx ? 'var(--plum)' : 'var(--cream)',
@@ -550,7 +590,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   fontSize: '0.85rem',
                   fontWeight: 700,
                   cursor: 'pointer',
-                  transition: 'all 0.25s ease'
+                  transform: selectedDay === idx ? 'scale(1.05)' : 'scale(1)',
+                  boxShadow: selectedDay === idx ? '0 4px 16px rgba(0, 0, 0, 0.2)' : 'none'
                 }}
               >
                 {day}
@@ -563,17 +604,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {timetablePreview[selectedDay].map((item, i) => (
               <div 
                 key={i}
+                className="hover-lift-card"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
                   borderRadius: '20px',
                   padding: '1.6rem',
                   backdropFilter: 'blur(10px)',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
-                  gap: '1.2rem',
-                  transition: 'transform 0.3s ease'
+                  gap: '1.2rem'
                 }}
               >
                 <div>
@@ -598,7 +639,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     <Clock size={14} style={{ color: item.color }} />
                     <span>{item.time}</span>
                   </div>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.color }} />
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.color, boxShadow: `0 0 10px ${item.color}` }} />
                 </div>
               </div>
             ))}
@@ -614,7 +655,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', alignItems: 'center' }}>
             
             {/* Left: Attendance Circular Gauges */}
-            <div style={{ background: 'var(--pearl)', border: '1px solid var(--line)', borderRadius: '24px', padding: '2.5rem', boxShadow: 'var(--shadow-soft)' }}>
+            <div className="hover-lift-card" style={{ background: 'var(--pearl)', border: '1px solid var(--line)', borderRadius: '24px', padding: '2.5rem', boxShadow: 'var(--shadow-soft)' }}>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.8rem' }}>
                 <div>
@@ -635,7 +676,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   { subject: 'Spatial Interfaces', code: 'DES-330', pct: 96, safe: '+3 absences reserved' },
                   { subject: 'Homotopy Theory', code: 'MTH-140', pct: 95, safe: '+2 absences reserved' }
                 ].map((s, idx) => (
-                  <div key={idx} style={{ padding: '1rem 1.2rem', background: 'var(--cream)', borderRadius: '16px', border: '1px solid var(--line)' }}>
+                  <div key={idx} className="hover-lift-card" style={{ padding: '1rem 1.2rem', background: 'var(--cream)', borderRadius: '16px', border: '1px solid var(--line)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
                       <div>
                         <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--ink)' }}>{s.subject}</span>
@@ -645,7 +686,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     </div>
 
                     <div style={{ height: '6px', background: 'rgba(45, 21, 39, 0.08)', borderRadius: '9999px', overflow: 'hidden', margin: '0.6rem 0 0.4rem' }}>
-                      <div style={{ width: s.pct + '%', height: '100%', background: 'var(--petal)', borderRadius: '9999px' }} />
+                      <div style={{ width: s.pct + '%', height: '100%', background: 'var(--petal)', borderRadius: '9999px', transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)' }} />
                     </div>
 
                     <div style={{ fontSize: '0.72rem', color: 'var(--success-text)', fontWeight: 600 }}>
@@ -679,6 +720,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     <div 
                       key={task.id}
                       onClick={() => toggleTask(task.id)}
+                      className="hover-lift-card"
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -689,7 +731,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         borderRadius: '16px',
                         cursor: 'pointer',
                         boxShadow: 'var(--shadow-soft)',
-                        transition: 'all 0.2s ease',
                         opacity: isChecked ? 0.6 : 1
                       }}
                     >
@@ -704,7 +745,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                           alignItems: 'center',
                           justifyContent: 'center',
                           color: '#ffffff',
-                          transition: 'all 0.2s ease'
+                          transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                          transform: isChecked ? 'scale(1.1)' : 'scale(1)'
                         }}>
                           {isChecked && <Check size={14} />}
                         </div>
@@ -762,6 +804,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             <button 
               onClick={onLoginClick}
+              className="interactive-pill-btn btn-shimmer"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -773,9 +816,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 padding: '0.85rem 1.8rem',
                 fontSize: '0.92rem',
                 fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: 'var(--shadow-glow)',
-                transition: 'all 0.3s ease'
+                boxShadow: 'var(--shadow-glow)'
               }}
             >
               <Play size={15} fill="#ffffff" />
@@ -784,7 +825,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Floating Study Alcove Card */}
-          <div style={{
+          <div className="hover-lift-card" style={{
             background: 'rgba(255, 253, 249, 0.12)',
             border: '1px solid rgba(255, 255, 255, 0.15)',
             borderRadius: '24px',
@@ -804,17 +845,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             {/* Breathing Pomodoro Display */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem 0' }}>
-              <div style={{
+              <div className="animate-ring-pulse" style={{
                 width: '150px',
                 height: '150px',
                 borderRadius: '50%',
-                border: '3px solid rgba(244, 114, 182, 0.3)',
+                border: '3px solid rgba(244, 114, 182, 0.4)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: '0 0 35px rgba(244, 114, 182, 0.25)',
-                background: 'rgba(45, 21, 39, 0.4)'
+                background: 'rgba(45, 21, 39, 0.45)'
               }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '2.2rem', fontWeight: 700, color: 'var(--cream)', letterSpacing: '0.04em' }}>
                   25:00
@@ -859,9 +900,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.6rem' }}>
             
-            <div style={{ background: 'var(--pearl)', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--line)', boxShadow: 'var(--shadow-soft)' }}>
+            <div className="hover-lift-card" style={{ background: 'var(--pearl)', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--line)', boxShadow: 'var(--shadow-soft)' }}>
               <div style={{ aspectRatio: '4/3', overflow: 'hidden' }}>
-                <img src="/assets/still-stationery-D_5E6dNw.jpg" alt="Study desk stationery" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src="/assets/still-stationery-D_5E6dNw.jpg" alt="Study desk stationery" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s ease' }} className="hover:scale-105" />
               </div>
               <div style={{ padding: '1.4rem' }}>
                 <span className="sci-fi-tag" style={{ fontSize: '0.6rem' }}>RITUAL 01</span>
@@ -872,9 +913,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             </div>
 
-            <div style={{ background: 'var(--pearl)', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--line)', boxShadow: 'var(--shadow-soft)' }}>
+            <div className="hover-lift-card" style={{ background: 'var(--pearl)', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--line)', boxShadow: 'var(--shadow-soft)' }}>
               <div style={{ aspectRatio: '4/3', overflow: 'hidden' }}>
-                <img src="/assets/petals-paper-CBABZWG0.jpg" alt="Petals on handmade paper" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src="/assets/petals-paper-CBABZWG0.jpg" alt="Petals on handmade paper" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s ease' }} className="hover:scale-105" />
               </div>
               <div style={{ padding: '1.4rem' }}>
                 <span className="sci-fi-tag" style={{ fontSize: '0.6rem' }}>RITUAL 02</span>
@@ -885,9 +926,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             </div>
 
-            <div style={{ background: 'var(--pearl)', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--line)', boxShadow: 'var(--shadow-soft)' }}>
+            <div className="hover-lift-card" style={{ background: 'var(--pearl)', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--line)', boxShadow: 'var(--shadow-soft)' }}>
               <div style={{ aspectRatio: '4/3', overflow: 'hidden' }}>
-                <img src="/assets/hero-campus-DdC_DPYn.jpg" alt="Campus architecture" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src="/assets/hero-campus-DdC_DPYn.jpg" alt="Campus architecture" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s ease' }} className="hover:scale-105" />
               </div>
               <div style={{ padding: '1.4rem' }}>
                 <span className="sci-fi-tag" style={{ fontSize: '0.6rem' }}>RITUAL 03</span>
@@ -935,6 +976,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           <button 
             onClick={onLoginClick}
+            className="interactive-pill-btn btn-shimmer"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -946,9 +988,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               padding: '0.9rem 2.2rem',
               fontSize: '1rem',
               fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: 'var(--shadow-lift)',
-              transition: 'all 0.3s ease'
+              boxShadow: 'var(--shadow-lift)'
             }}
           >
             <span>Enter campus</span>
