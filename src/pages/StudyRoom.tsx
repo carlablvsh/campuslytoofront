@@ -1020,6 +1020,496 @@ export const StudyRoom: React.FC<StudyRoomProps> = ({ onExit }) => {
     };
   }, []);
 
+  // ==========================================
+  // Render Individual Panels
+  // ==========================================
+  const timerPanel = showTimer ? (
+    <div key="timer" className="study-panel pomodoro-panel fade-in">
+      <div className="panel-header">
+        <Clock size={15} className="panel-icon pink-icon" />
+        <h2>Cozy Timer</h2>
+        <button 
+          className={`btn-icon-setting ${showSettings ? 'active' : ''}`}
+          onClick={() => setShowSettings(!showSettings)}
+          title="Timer Settings"
+        >
+          <Settings size={13} />
+        </button>
+      </div>
+
+      <div className="pomodoro-modes">
+        <button 
+          className={`mode-tab ${timerMode === 'focus' ? 'active' : ''}`}
+          onClick={() => setTimerMode('focus')}
+        >
+          Focus
+        </button>
+        <button 
+          className={`mode-tab ${timerMode === 'short' ? 'active' : ''}`}
+          onClick={() => setTimerMode('short')}
+        >
+          Short Break
+        </button>
+        <button 
+          className={`mode-tab ${timerMode === 'long' ? 'active' : ''}`}
+          onClick={() => setTimerMode('long')}
+        >
+          Long Break
+        </button>
+      </div>
+
+      {showSettings ? (
+        <form onSubmit={saveSettings} className="settings-form fade-in">
+          <h3>Custom Durations (mins)</h3>
+          <div className="settings-grid">
+            <label>
+              <span>Focus</span>
+              <input 
+                type="number" 
+                min="1" 
+                max="120"
+                value={customFocus} 
+                onChange={e => setCustomFocus(Number(e.target.value))} 
+              />
+            </label>
+            <label>
+              <span>Short</span>
+              <input 
+                type="number" 
+                min="1" 
+                max="60"
+                value={customShort} 
+                onChange={e => setCustomShort(Number(e.target.value))} 
+              />
+            </label>
+            <label>
+              <span>Long</span>
+              <input 
+                type="number" 
+                min="1" 
+                max="60"
+                value={customLong} 
+                onChange={e => setCustomLong(Number(e.target.value))} 
+              />
+            </label>
+          </div>
+          <div className="settings-actions">
+            <button type="submit" className="btn-save">Apply</button>
+            <button 
+              type="button" 
+              className="btn-cancel" 
+              onClick={() => {
+                setCustomFocus(durations.focus);
+                setCustomShort(durations.short);
+                setCustomLong(durations.long);
+                setShowSettings(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="timer-display-container">
+          <div className="time-numbers">
+            {formatTime(timeLeft)}
+          </div>
+          <p className="timer-status">
+            {timerMode === 'focus' && 'time to block out distractions...'}
+            {timerMode === 'short' && 'stretch, drink some water!'}
+            {timerMode === 'long' && 'brew a cup of tea.'}
+          </p>
+
+          <div className="timer-controls">
+            <button className="btn-timer-primary" onClick={toggleTimer}>
+              {isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+              <span>{isPlaying ? 'Pause' : 'Start'}</span>
+            </button>
+            
+            <button className="btn-timer-reset" onClick={resetTimer} title="Reset Timer">
+              <RotateCcw size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  const notepadPanel = showNotepad ? (
+    <div key="notepad" className="study-panel notepad-panel fade-in">
+      <div className="panel-header">
+        <FileText size={15} className="panel-icon cream-icon" />
+        <h2>Sanctuary Notepad</h2>
+        
+        <div className="clicker-toggle">
+          <button 
+            className={`btn-clicker ${keySoundsEnabled ? 'active' : ''}`}
+            onClick={() => {
+              initAudio();
+              setKeySoundsEnabled(!keySoundsEnabled);
+            }}
+            title="Toggle Cozy Keyboard Click Feedback"
+          >
+            <Keyboard size={12} />
+            <span>Clicks {keySoundsEnabled ? 'On' : 'Off'}</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="notepad-container">
+        <textarea
+          className="paper-textarea"
+          placeholder="Type your quick study notes or scratchpad thoughts... (autosaves)"
+          value={noteContent}
+          onChange={handleNoteChange}
+        />
+      </div>
+    </div>
+  ) : null;
+
+  const soundsPanel = showSounds ? (
+    <div key="sounds" className="study-panel sounds-panel fade-in">
+      <div className="panel-header">
+        <Volume2 size={15} className="panel-icon lavender-icon" />
+        <h2>Focus Soundscapes</h2>
+      </div>
+
+      <div className="soundscape-list">
+        {/* Rain */}
+        <div className={`soundscape-item ${activeSounds.rain ? 'playing' : ''}`}>
+          <button className="sound-toggle" onClick={() => toggleSound('rain')}>
+            <CloudRain size={14} />
+            <span>Autumn Rain</span>
+          </button>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.05"
+            value={volumes.rain}
+            disabled={!activeSounds.rain}
+            onChange={e => handleVolumeChange('rain', Number(e.target.value))}
+            className="sound-volume-slider"
+          />
+        </div>
+
+        {/* Ocean */}
+        <div className={`soundscape-item ${activeSounds.waves ? 'playing' : ''}`}>
+          <button className="sound-toggle" onClick={() => toggleSound('waves')}>
+            <Waves size={14} />
+            <span>Ocean Tides</span>
+          </button>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.05"
+            value={volumes.waves}
+            disabled={!activeSounds.waves}
+            onChange={e => handleVolumeChange('waves', Number(e.target.value))}
+            className="sound-volume-slider"
+          />
+        </div>
+
+        {/* Fireplace */}
+        <div className={`soundscape-item ${activeSounds.fireplace ? 'playing' : ''}`}>
+          <button className="sound-toggle" onClick={() => toggleSound('fireplace')}>
+            <Flame size={14} />
+            <span>Campfire Crackles</span>
+          </button>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.05"
+            value={volumes.fireplace}
+            disabled={!activeSounds.fireplace}
+            onChange={e => handleVolumeChange('fireplace', Number(e.target.value))}
+            className="sound-volume-slider"
+          />
+        </div>
+
+        {/* Wind */}
+        <div className={`soundscape-item ${activeSounds.wind ? 'playing' : ''}`}>
+          <button className="sound-toggle" onClick={() => toggleSound('wind')}>
+            <Wind size={14} />
+            <span>Rustling Wind</span>
+          </button>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.05"
+            value={volumes.wind}
+            disabled={!activeSounds.wind}
+            onChange={e => handleVolumeChange('wind', Number(e.target.value))}
+            className="sound-volume-slider"
+          />
+        </div>
+
+        {/* Cafe */}
+        <div className={`soundscape-item ${activeSounds.cafe ? 'playing' : ''}`}>
+          <button className="sound-toggle" onClick={() => toggleSound('cafe')}>
+            <Coffee size={14} />
+            <span>Cozy Cafe Chat</span>
+          </button>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.05"
+            value={volumes.cafe}
+            disabled={!activeSounds.cafe}
+            onChange={e => handleVolumeChange('cafe', Number(e.target.value))}
+            className="sound-volume-slider"
+          />
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  const checklistPanel = showChecklist ? (
+    <div key="checklist" className="study-panel checklist-panel fade-in">
+      <div className="panel-header">
+        <ListTodo size={15} className="panel-icon mint-icon" />
+        <h2>Session Tasks</h2>
+        {tasks.some(t => t.completed) && (
+          <button onClick={clearCompleted} className="btn-clear-completed">
+            Clear Done
+          </button>
+        )}
+      </div>
+
+      <form onSubmit={addTask} className="checklist-add-form">
+        <input 
+          type="text" 
+          placeholder="Add a task..." 
+          value={newTaskText} 
+          onChange={e => setNewTaskText(e.target.value)} 
+          className="checklist-input"
+        />
+        <button type="submit" className="btn-checklist-add">
+          <Plus size={14} />
+        </button>
+      </form>
+
+      <div className="checklist-items">
+        {tasks.length === 0 ? (
+          <div className="checklist-empty">
+            <span style={{ fontSize: '1.2rem' }}>✨</span>
+            <p>Ready to focus? Add your first task above.</p>
+          </div>
+        ) : (
+          <ul className="checklist-ul">
+            {tasks.map(t => (
+              <li key={t.id} className={`checklist-li ${t.completed ? 'completed' : ''}`}>
+                <button 
+                  type="button" 
+                  onClick={() => toggleTask(t.id)} 
+                  className="btn-checkbox"
+                >
+                  {t.completed ? (
+                    <span className="checkbox-checked"><Check size={10} strokeWidth={3} /></span>
+                  ) : (
+                    <span className="checkbox-empty" />
+                  )}
+                </button>
+                <span className="checklist-text">{t.text}</span>
+                <button 
+                  type="button" 
+                  onClick={() => deleteTask(t.id)} 
+                  className="btn-checklist-delete"
+                  title="Delete"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  ) : null;
+
+  const spotifyPanel = showSpotify ? (
+    <div key="spotify" className="study-panel spotify-panel fade-in">
+      <div className="panel-header">
+        <Music size={15} className="panel-icon mint-icon" style={{ color: '#1db954' }} />
+        <h2>Spotify Player</h2>
+      </div>
+
+      {!spotifyConnected ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: '0.8rem', padding: '1rem 0' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(29, 185, 84, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1db954' }}>
+            <Music size={20} />
+          </div>
+          <div>
+            <h3 style={{ fontSize: '0.85rem', fontWeight: 800, margin: '0 0 0.2rem 0' }}>Connect Spotify</h3>
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.3 }}>
+              {isPremium ? 'Stream lo-fi and focus music in background.' : 'Open Spotify focus playlists directly.'}
+            </p>
+          </div>
+          <button 
+            onClick={handleConnectSpotify}
+            className="btn-primary" 
+            style={{ fontSize: '0.75rem', padding: '0.45rem 1rem', background: '#1db954', color: 'white', border: 'none', borderRadius: '20px', fontWeight: 750, cursor: 'pointer' }}
+          >
+            Connect Account
+          </button>
+        </div>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '0.4rem' }}>
+          {/* NOW PLAYING TRACK INFO */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div style={{ width: '42px', height: '42px', background: 'var(--border-color)', borderRadius: '6px', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {currentTrack?.album?.images?.[0]?.url ? (
+                <img src={currentTrack.album.images[0].url} alt="Album Art" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <Music size={18} style={{ color: 'var(--text-muted)' }} />
+              )}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-primary)' }}>
+                {currentTrack?.name || 'No track playing'}
+              </div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {currentTrack?.artists?.map((a: any) => a.name).join(', ') || 'Choose a song below'}
+              </div>
+            </div>
+          </div>
+
+          {/* PROGRESS BAR */}
+          {isPremium && currentTrack && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+              <span>{formatSpotifyTime(trackProgress)}</span>
+              <input 
+                type="range" 
+                min={0} 
+                max={trackDuration} 
+                value={trackProgress} 
+                onChange={handleSeek} 
+                style={{ flex: 1, accentColor: '#1db954', cursor: 'pointer', height: '3px' }} 
+              />
+              <span>{formatSpotifyTime(trackDuration)}</span>
+            </div>
+          )}
+
+          {/* PLAYBACK CONTROLS */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem' }}>
+            {isPremium ? (
+              <>
+                <button onClick={handlePrevTrack} className="btn-secondary" style={{ padding: '0.35rem', minWidth: 'auto', borderRadius: '50%' }}>
+                  <SkipBack size={14} />
+                </button>
+                <button 
+                  onClick={handleTogglePlay} 
+                  className="btn-primary" 
+                  style={{ width: '32px', height: '32px', borderRadius: '50%', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1db954', border: 'none', cursor: 'pointer' }}
+                >
+                  {isPaused ? <Play size={14} fill="white" /> : <Pause size={14} fill="white" />}
+                </button>
+                <button onClick={handleNextTrack} className="btn-secondary" style={{ padding: '0.35rem', minWidth: 'auto', borderRadius: '50%' }}>
+                  <SkipForward size={14} />
+                </button>
+              </>
+            ) : (
+              currentTrack && (
+                <a 
+                  href={`https://open.spotify.com/track/${currentTrack.id}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="btn-primary" 
+                  style={{ fontSize: '0.72rem', padding: '0.4rem 1rem', background: '#1db954', color: 'white', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                >
+                  <ExternalLink size={12} /> Open in Spotify
+                </a>
+              )
+            )}
+          </div>
+
+          {/* VOLUME CONTROLLER */}
+          {isPremium && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '0.6rem' }}>
+              <Volume2 size={12} style={{ color: 'var(--text-muted)' }} />
+              <input 
+                type="range" 
+                min={0} 
+                max={100} 
+                value={playerVolume} 
+                onChange={handleSpotifyVolumeChange} 
+                style={{ width: '80px', accentColor: '#1db954', height: '3px' }} 
+              />
+            </div>
+          )}
+
+          {/* SEARCH BOX */}
+          <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            <form onSubmit={handleSpotifySearch} style={{ display: 'flex', gap: '0.3rem' }}>
+              <input 
+                type="text" 
+                placeholder="Search tracks, playlists..." 
+                value={spotifySearchQuery}
+                onChange={e => setSpotifySearchQuery(e.target.value)}
+                style={{
+                  flex: 1,
+                  background: 'var(--bg-input)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  padding: '0.35rem 0.6rem',
+                  fontSize: '0.72rem',
+                  color: 'var(--text-primary)',
+                  outline: 'none'
+                }}
+              />
+              <button type="submit" className="btn-secondary" style={{ padding: '0.35rem 0.6rem', minWidth: 'auto' }} disabled={searchLoading}>
+                <Search size={12} />
+              </button>
+            </form>
+
+            {searchResults.length > 0 && (
+              <div style={{ maxHeight: '140px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.3rem', background: 'var(--bg-app)', padding: '0.4rem', borderRadius: '8px' }}>
+                {searchResults.map((item, index) => (
+                  <div 
+                    key={index}
+                    onClick={() => handlePlaySpotifyItem(item.uri)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.3rem', borderRadius: '4px', cursor: 'pointer' }}
+                    className="spotify-search-item"
+                  >
+                    <div style={{ width: '28px', height: '28px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden', flexShrink: 0 }}>
+                      <img src={item.album?.images?.[0]?.url || item.images?.[0]?.url || ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
+                      <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.type === 'track' ? item.artists?.map((a: any) => a.name).join(', ') : `Playlist • ${item.tracks?.total || 0} songs`}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.58rem', color: '#1db954', fontWeight: 700 }}>
+                      {isPremium ? 'Play' : 'Open'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* STATUS BAR & DISCONNECT */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '0.6rem', fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+            <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '180px' }}>
+              Status: {playbackStatusMessage}
+            </span>
+            <button 
+              onClick={handleDisconnectSpotify}
+              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 700, padding: 0 }}
+            >
+              Disconnect
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  ) : null;
+
   return (
     <div className="studyroom-container" style={{ backgroundImage: "url('/cozy_study_bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}>
       
@@ -1102,505 +1592,52 @@ export const StudyRoom: React.FC<StudyRoomProps> = ({ onExit }) => {
 
       {/* Dynamic workspace wrapper where cards reflow symmetrically */}
       <div className="studyroom-workspace">
-        
-        {/* 1. POMODORO TIMER PANEL */}
-        {showTimer && (
-          <div className="study-panel pomodoro-panel fade-in">
-            <div className="panel-header">
-              <Clock size={15} className="panel-icon pink-icon" />
-              <h2>Cozy Timer</h2>
-              <button 
-                className={`btn-icon-setting ${showSettings ? 'active' : ''}`}
-                onClick={() => setShowSettings(!showSettings)}
-                title="Timer Settings"
-              >
-                <Settings size={13} />
-              </button>
+        {(() => {
+          const activePanels = [
+            timerPanel,
+            notepadPanel,
+            soundsPanel,
+            checklistPanel,
+            spotifyPanel
+          ].filter(Boolean);
+
+          if (activePanels.length === 5) {
+            return (
+              <>
+                <div className="studyroom-row studyroom-row-top">
+                  {timerPanel}
+                  {notepadPanel}
+                </div>
+                <div className="studyroom-row studyroom-row-bottom">
+                  {soundsPanel}
+                  {checklistPanel}
+                  {spotifyPanel}
+                </div>
+              </>
+            );
+          }
+
+          if (activePanels.length === 4) {
+            return (
+              <>
+                <div className="studyroom-row studyroom-row-top">
+                  {activePanels[0]}
+                  {activePanels[1]}
+                </div>
+                <div className="studyroom-row studyroom-row-bottom">
+                  {activePanels[2]}
+                  {activePanels[3]}
+                </div>
+              </>
+            );
+          }
+
+          return (
+            <div className="studyroom-row">
+              {activePanels}
             </div>
-
-            <div className="pomodoro-modes">
-              <button 
-                className={`mode-tab ${timerMode === 'focus' ? 'active' : ''}`}
-                onClick={() => setTimerMode('focus')}
-              >
-                Focus
-              </button>
-              <button 
-                className={`mode-tab ${timerMode === 'short' ? 'active' : ''}`}
-                onClick={() => setTimerMode('short')}
-              >
-                Short Break
-              </button>
-              <button 
-                className={`mode-tab ${timerMode === 'long' ? 'active' : ''}`}
-                onClick={() => setTimerMode('long')}
-              >
-                Long Break
-              </button>
-            </div>
-
-            {showSettings ? (
-              <form onSubmit={saveSettings} className="settings-form fade-in">
-                <h3>Custom Durations (mins)</h3>
-                <div className="settings-grid">
-                  <label>
-                    <span>Focus</span>
-                    <input 
-                      type="number" 
-                      min="1" 
-                      max="120"
-                      value={customFocus} 
-                      onChange={e => setCustomFocus(Number(e.target.value))} 
-                    />
-                  </label>
-                  <label>
-                    <span>Short</span>
-                    <input 
-                      type="number" 
-                      min="1" 
-                      max="60"
-                      value={customShort} 
-                      onChange={e => setCustomShort(Number(e.target.value))} 
-                    />
-                  </label>
-                  <label>
-                    <span>Long</span>
-                    <input 
-                      type="number" 
-                      min="1" 
-                      max="60"
-                      value={customLong} 
-                      onChange={e => setCustomLong(Number(e.target.value))} 
-                    />
-                  </label>
-                </div>
-                <div className="settings-actions">
-                  <button type="submit" className="btn-save">Apply</button>
-                  <button 
-                    type="button" 
-                    className="btn-cancel" 
-                    onClick={() => {
-                      setCustomFocus(durations.focus);
-                      setCustomShort(durations.short);
-                      setCustomLong(durations.long);
-                      setShowSettings(false);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className="timer-display-container">
-                <div className="time-numbers">
-                  {formatTime(timeLeft)}
-                </div>
-                <p className="timer-status">
-                  {timerMode === 'focus' && 'time to block out distractions...'}
-                  {timerMode === 'short' && 'stretch, drink some water!'}
-                  {timerMode === 'long' && 'brew a cup of tea.'}
-                </p>
-
-                <div className="timer-controls">
-                  <button className="btn-timer-primary" onClick={toggleTimer}>
-                    {isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
-                    <span>{isPlaying ? 'Pause' : 'Start'}</span>
-                  </button>
-                  
-                  <button className="btn-timer-reset" onClick={resetTimer} title="Reset Timer">
-                    <RotateCcw size={14} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 2. AUTOSAVING NOTEPAD */}
-        {showNotepad && (
-          <div className="study-panel notepad-panel fade-in">
-            <div className="panel-header">
-              <FileText size={15} className="panel-icon cream-icon" />
-              <h2>Sanctuary Notepad</h2>
-              
-              <div className="clicker-toggle">
-                <button 
-                  className={`btn-clicker ${keySoundsEnabled ? 'active' : ''}`}
-                  onClick={() => {
-                    initAudio();
-                    setKeySoundsEnabled(!keySoundsEnabled);
-                  }}
-                  title="Toggle Cozy Keyboard Click Feedback"
-                >
-                  <Keyboard size={12} />
-                  <span>Clicks {keySoundsEnabled ? 'On' : 'Off'}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="notepad-container">
-              <textarea
-                className="paper-textarea"
-                placeholder="Type your quick study notes or scratchpad thoughts... (autosaves)"
-                value={noteContent}
-                onChange={handleNoteChange}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* 3. AMBIENT SOUNDS CONSOLE */}
-        {showSounds && (
-          <div className="study-panel sounds-panel fade-in">
-            <div className="panel-header">
-              <Volume2 size={15} className="panel-icon lavender-icon" />
-              <h2>Focus Soundscapes</h2>
-            </div>
-
-            <div className="soundscape-list">
-              {/* Rain */}
-              <div className={`soundscape-item ${activeSounds.rain ? 'playing' : ''}`}>
-                <button className="sound-toggle" onClick={() => toggleSound('rain')}>
-                  <CloudRain size={14} />
-                  <span>Autumn Rain</span>
-                </button>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.05"
-                  value={volumes.rain}
-                  disabled={!activeSounds.rain}
-                  onChange={e => handleVolumeChange('rain', Number(e.target.value))}
-                  className="sound-volume-slider"
-                />
-              </div>
-
-              {/* Ocean */}
-              <div className={`soundscape-item ${activeSounds.waves ? 'playing' : ''}`}>
-                <button className="sound-toggle" onClick={() => toggleSound('waves')}>
-                  <Waves size={14} />
-                  <span>Ocean Tides</span>
-                </button>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.05"
-                  value={volumes.waves}
-                  disabled={!activeSounds.waves}
-                  onChange={e => handleVolumeChange('waves', Number(e.target.value))}
-                  className="sound-volume-slider"
-                />
-              </div>
-
-              {/* Fireplace */}
-              <div className={`soundscape-item ${activeSounds.fireplace ? 'playing' : ''}`}>
-                <button className="sound-toggle" onClick={() => toggleSound('fireplace')}>
-                  <Flame size={14} />
-                  <span>Campfire Crackles</span>
-                </button>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.05"
-                  value={volumes.fireplace}
-                  disabled={!activeSounds.fireplace}
-                  onChange={e => handleVolumeChange('fireplace', Number(e.target.value))}
-                  className="sound-volume-slider"
-                />
-              </div>
-
-              {/* Wind */}
-              <div className={`soundscape-item ${activeSounds.wind ? 'playing' : ''}`}>
-                <button className="sound-toggle" onClick={() => toggleSound('wind')}>
-                  <Wind size={14} />
-                  <span>Rustling Wind</span>
-                </button>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.05"
-                  value={volumes.wind}
-                  disabled={!activeSounds.wind}
-                  onChange={e => handleVolumeChange('wind', Number(e.target.value))}
-                  className="sound-volume-slider"
-                />
-              </div>
-
-              {/* Cafe */}
-              <div className={`soundscape-item ${activeSounds.cafe ? 'playing' : ''}`}>
-                <button className="sound-toggle" onClick={() => toggleSound('cafe')}>
-                  <Coffee size={14} />
-                  <span>Cozy Cafe Chat</span>
-                </button>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.05"
-                  value={volumes.cafe}
-                  disabled={!activeSounds.cafe}
-                  onChange={e => handleVolumeChange('cafe', Number(e.target.value))}
-                  className="sound-volume-slider"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 4. SESSION TO-DO LIST */}
-        {showChecklist && (
-          <div className="study-panel checklist-panel fade-in">
-            <div className="panel-header">
-              <ListTodo size={15} className="panel-icon mint-icon" />
-              <h2>Session Tasks</h2>
-              {tasks.filter(t => t.completed).length > 0 && (
-                <button className="btn-clear-completed" onClick={clearCompleted}>
-                  Clear done
-                </button>
-              )}
-            </div>
-
-            <form onSubmit={addTask} className="checklist-add-form">
-              <input 
-                type="text" 
-                placeholder="Add a task..." 
-                value={newTaskText}
-                onChange={e => setNewTaskText(e.target.value)}
-                className="checklist-input"
-              />
-              <button type="submit" className="btn-checklist-add">
-                <Plus size={14} />
-              </button>
-            </form>
-
-            <div className="checklist-items">
-              {tasks.length === 0 ? (
-                <div className="checklist-empty">
-                  <p>Checklist is empty.</p>
-                </div>
-              ) : (
-                <ul className="checklist-ul">
-                  {tasks.map(task => (
-                    <li key={task.id} className={`checklist-li ${task.completed ? 'completed' : ''}`}>
-                      <button 
-                        type="button" 
-                        className="btn-checkbox" 
-                        onClick={() => toggleTask(task.id)}
-                      >
-                        {task.completed ? (
-                          <span className="checkbox-checked"><Check size={8} strokeWidth={3} /></span>
-                        ) : (
-                          <span className="checkbox-empty" />
-                        )}
-                      </button>
-                      <span className="checklist-text">{task.text}</span>
-                      <button 
-                        type="button" 
-                        className="btn-checklist-delete"
-                        onClick={() => deleteTask(task.id)}
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* 5. SPOTIFY WIDGET PLAYLIST CARD */}
-        {showSpotify && (
-          <div className="study-panel spotify-panel fade-in">
-            <div className="panel-header">
-              <Music size={15} className="panel-icon pink-icon" style={{ color: '#1db954' }} />
-              <h2 style={{ fontFamily: 'var(--font-serif)' }}>Spotify Player</h2>
-            </div>
-            
-            {!spotifyConnected ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem', padding: '1rem', textAlign: 'center' }}>
-                <div style={{ background: '#1db954', color: 'white', padding: '0.6rem', borderRadius: '50%' }}>
-                  <Music size={24} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.2rem 0' }}>Connect Spotify</h3>
-                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>Play your music while you study.</p>
-                </div>
-                <button 
-                  onClick={handleConnectSpotify}
-                  style={{
-                    background: '#1db954',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '20px',
-                    padding: '0.45rem 1.2rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 8px rgba(29, 185, 84, 0.25)',
-                    transition: 'transform 0.2s'
-                  }}
-                >
-                  Connect Account
-                </button>
-              </div>
-            ) : (
-              <div className="spotify-widget-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                {/* CURRENTLY PLAYING SECTION */}
-                <div style={{ display: 'flex', gap: '0.8rem', background: 'var(--bg-input)', padding: '0.6rem', borderRadius: '10px', alignItems: 'center' }}>
-                  <div style={{ width: '48px', height: '48px', background: 'var(--border-color)', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
-                    {currentTrack?.album?.images?.[0]?.url ? (
-                      <img src={currentTrack.album.images[0].url} alt="Album Art" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
-                        <Music size={20} />
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-primary)' }}>
-                      {currentTrack?.name || 'No Track Selected'}
-                    </span>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {currentTrack?.artists?.map((a: any) => a.name).join(', ') || 'Select a song below'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* PROGRESS BAR */}
-                {isPremium && currentTrack && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                    <input 
-                      type="range" 
-                      min={0} 
-                      max={trackDuration} 
-                      value={trackProgress} 
-                      onChange={handleSeek} 
-                      style={{ width: '100%', accentColor: '#1db954', cursor: 'pointer', height: '3px' }} 
-                    />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.58rem', color: 'var(--text-muted)' }}>
-                      <span>{formatSpotifyTime(trackProgress)}</span>
-                      <span>{formatSpotifyTime(trackDuration)}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* CONTROLS */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.2rem' }}>
-                  {isPremium ? (
-                    <>
-                      <button onClick={handlePrevTrack} className="btn-secondary" style={{ padding: '0.35rem', minWidth: 'auto', borderRadius: '50%' }}>
-                        <SkipBack size={14} />
-                      </button>
-                      <button onClick={handleTogglePlay} className="btn-primary" style={{ padding: '0.5rem', minWidth: 'auto', borderRadius: '50%', background: '#1db954', color: 'white', borderColor: '#1db954' }}>
-                        {isPaused ? <Play size={14} fill="white" /> : <Pause size={14} fill="white" />}
-                      </button>
-                      <button onClick={handleNextTrack} className="btn-secondary" style={{ padding: '0.35rem', minWidth: 'auto', borderRadius: '50%' }}>
-                        <SkipForward size={14} />
-                      </button>
-                    </>
-                  ) : (
-                    currentTrack && (
-                      <a 
-                        href={`https://open.spotify.com/track/${currentTrack.id}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="btn-primary"
-                        style={{ fontSize: '0.72rem', padding: '0.4rem 1rem', background: '#1db954', color: 'white', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
-                      >
-                        <ExternalLink size={12} /> Open in Spotify
-                      </a>
-                    )
-                  )}
-                </div>
-
-                {/* VOLUME CONTROLLER */}
-                {isPremium && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '0.6rem' }}>
-                    <Volume2 size={12} style={{ color: 'var(--text-muted)' }} />
-                    <input 
-                      type="range" 
-                      min={0} 
-                      max={100} 
-                      value={playerVolume} 
-                      onChange={handleSpotifyVolumeChange} 
-                      style={{ width: '80px', accentColor: '#1db954', height: '3px' }} 
-                    />
-                  </div>
-                )}
-
-                {/* SEARCH BOX */}
-                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  <form onSubmit={handleSpotifySearch} style={{ display: 'flex', gap: '0.3rem' }}>
-                    <input 
-                      type="text" 
-                      placeholder="Search tracks, playlists..." 
-                      value={spotifySearchQuery}
-                      onChange={e => setSpotifySearchQuery(e.target.value)}
-                      style={{
-                        flex: 1,
-                        background: 'var(--bg-input)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: '8px',
-                        padding: '0.35rem 0.6rem',
-                        fontSize: '0.72rem',
-                        color: 'var(--text-primary)',
-                        outline: 'none'
-                      }}
-                    />
-                    <button type="submit" className="btn-secondary" style={{ padding: '0.35rem 0.6rem', minWidth: 'auto' }} disabled={searchLoading}>
-                      <Search size={12} />
-                    </button>
-                  </form>
-
-                  {searchResults.length > 0 && (
-                    <div style={{ maxHeight: '140px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.3rem', background: 'var(--bg-app)', padding: '0.4rem', borderRadius: '8px' }}>
-                      {searchResults.map((item, index) => (
-                        <div 
-                          key={index}
-                          onClick={() => handlePlaySpotifyItem(item.uri)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.3rem', borderRadius: '4px', cursor: 'pointer' }}
-                          className="spotify-search-item"
-                        >
-                          <div style={{ width: '28px', height: '28px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden', flexShrink: 0 }}>
-                            <img src={item.album?.images?.[0]?.url || item.images?.[0]?.url || ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                            <span style={{ fontSize: '0.68rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
-                            <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {item.type === 'track' ? item.artists?.map((a: any) => a.name).join(', ') : `Playlist • ${item.tracks?.total || 0} songs`}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: '0.58rem', color: '#1db954', fontWeight: 700 }}>
-                            {isPremium ? 'Play' : 'Open'}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* STATUS BAR & DISCONNECT */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '0.6rem', fontSize: '0.6rem', color: 'var(--text-muted)' }}>
-                  <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '180px' }}>
-                    Status: {playbackStatusMessage}
-                  </span>
-                  <button 
-                    onClick={handleDisconnectSpotify}
-                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 700, padding: 0 }}
-                  >
-                    Disconnect
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
+          );
+        })()}
       </div>
 
       {/* Floating Bottom Controller Dock */}

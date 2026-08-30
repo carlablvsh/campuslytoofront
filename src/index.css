@@ -2355,16 +2355,24 @@ span.badge {
   position: relative;
   z-index: 2;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 1.25rem;
-  padding: 5.2rem 1.5rem 5.5rem 1.5rem;
+  padding: 4.8rem 1.5rem 5.5rem 1.5rem;
   height: 100%;
   max-height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
   justify-content: center;
   align-items: center;
-  align-content: center;
+}
+
+.studyroom-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1.25rem;
+  width: 100%;
 }
 
 .studyroom-exit-btn:hover {
@@ -2390,7 +2398,7 @@ span.badge {
 }
 
 .study-panel {
-  background: rgba(255, 255, 255, 0.78) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
   backdrop-filter: blur(20px) saturate(130%);
   -webkit-backdrop-filter: blur(20px) saturate(130%);
   border: 1.5px solid rgba(255, 185, 200, 0.45) !important;
@@ -2401,11 +2409,11 @@ span.badge {
   flex-direction: column;
   gap: 0.8rem;
   width: 310px;
-  min-width: 290px;
-  max-width: 310px;
-  height: 370px;
-  min-height: 370px;
-  max-height: 370px;
+  min-width: 280px;
+  max-width: 90vw;
+  height: 350px;
+  min-height: 350px;
+  max-height: 350px;
   box-sizing: border-box;
   flex-shrink: 0;
   transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease;
@@ -2641,6 +2649,7 @@ span.badge {
 
 /* 2. NOTEPAD PANEL */
 .notepad-panel {
+  width: 440px;
   background: rgba(255, 253, 249, 0.76) !important;
   border-color: rgba(255, 230, 200, 0.5) !important;
 }
