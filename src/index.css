@@ -2356,13 +2356,15 @@ span.badge {
   z-index: 2;
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
-  padding: 5.2rem 2rem 5.5rem 2rem;
+  gap: 1.25rem;
+  padding: 5.2rem 1.5rem 5.5rem 1.5rem;
   height: 100%;
+  max-height: 100vh;
   overflow-y: auto;
+  overflow-x: hidden;
   justify-content: center;
-  align-content: flex-start;
-  align-items: flex-start;
+  align-items: center;
+  align-content: center;
 }
 
 .studyroom-exit-btn:hover {
@@ -2388,31 +2390,36 @@ span.badge {
 }
 
 .study-panel {
-  background: rgba(255, 255, 255, 0.74) !important;
-  backdrop-filter: blur(16px) saturate(120%);
-  -webkit-backdrop-filter: blur(16px) saturate(120%);
-  border: 1.5px solid rgba(255, 185, 200, 0.4) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(20px) saturate(130%);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
+  border: 1.5px solid rgba(255, 185, 200, 0.45) !important;
   border-radius: 20px !important;
   padding: 1.2rem;
-  box-shadow: 0 8px 32px rgba(255, 94, 132, 0.05) !important;
+  box-shadow: 0 8px 32px rgba(45, 21, 39, 0.08) !important;
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
-  min-height: 280px;
-  width: 320px;
+  width: 310px;
+  min-width: 290px;
+  max-width: 310px;
+  height: 370px;
+  min-height: 370px;
+  max-height: 370px;
+  box-sizing: border-box;
   flex-shrink: 0;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease;
 }
 
 .study-panel:hover {
   transform: translateY(-4px) scale(1.01) !important;
-  box-shadow: 0 12px 28px rgba(255, 94, 132, 0.08) !important;
+  box-shadow: 0 14px 36px rgba(255, 94, 132, 0.12) !important;
 }
 
 [data-theme="dark"] .study-panel {
-  background: rgba(26, 12, 22, 0.78) !important;
-  border-color: rgba(255, 94, 132, 0.22) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  background: rgba(26, 12, 22, 0.82) !important;
+  border-color: rgba(255, 94, 132, 0.25) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
 }
 
 .study-panel .panel-header {
@@ -2634,7 +2641,6 @@ span.badge {
 
 /* 2. NOTEPAD PANEL */
 .notepad-panel {
-  width: 380px;
   background: rgba(255, 253, 249, 0.76) !important;
   border-color: rgba(255, 230, 200, 0.5) !important;
 }
@@ -2672,23 +2678,25 @@ span.badge {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
 }
 
 /* Paper Style Notepad */
 .paper-textarea {
   width: 100%;
   flex: 1;
-  min-height: 200px;
+  min-height: 0;
+  height: 100%;
   background: transparent;
   border: none;
   outline: none;
   font-size: 0.8rem;
-  line-height: 2rem;
+  line-height: 1.85rem;
   color: #4b3e34;
   font-family: var(--font-family);
   resize: none;
   background-image: linear-gradient(rgba(230, 210, 190, 0.15) 1px, transparent 1px);
-  background-size: 100% 2rem;
+  background-size: 100% 1.85rem;
   padding: 0.2rem 0;
 }
 
@@ -2706,7 +2714,10 @@ span.badge {
 .soundscape-list {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  justify-content: space-between;
+  flex: 1;
+  min-height: 0;
+  gap: 0.35rem;
   padding: 0.1rem 0;
 }
 

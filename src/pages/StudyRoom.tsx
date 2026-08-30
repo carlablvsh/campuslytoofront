@@ -1021,7 +1021,7 @@ export const StudyRoom: React.FC<StudyRoomProps> = ({ onExit }) => {
   }, []);
 
   return (
-    <div className="studyroom-container" style={{ backgroundImage: "url('/assets/study-nook-DITl-i_n.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}>
+    <div className="studyroom-container" style={{ backgroundImage: "url('/cozy_study_bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}>
       
       {/* Top App-Level Fullscreen Navigation Bar */}
       <header className="studyroom-topbar" style={{
