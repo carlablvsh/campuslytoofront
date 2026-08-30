@@ -578,13 +578,22 @@ const AppContent: React.FC = () => {
       case 'calendar':
         return <div className="page-calendar"><CalendarView /></div>;
       case 'studyroom':
-        return <div className="page-studyroom"><StudyRoom /></div>;
+        return <div className="page-studyroom"><StudyRoom onExit={() => setActiveTab('dashboard')} /></div>;
       case 'campus-xp':
         return <div className="page-campusxp"><CampusXP /></div>;
       default:
         return <div className="page-dashboard"><Dashboard /></div>;
     }
   };
+
+  // Dedicated App-Level Fullscreen Viewport for Study Room
+  if (activeTab === 'studyroom') {
+    return (
+      <div className="app-container studyroom-active" data-accent={accentTheme} style={{ margin: 0, padding: 0, width: '100vw', height: '100vh', overflow: 'hidden' }}>
+        <StudyRoom onExit={() => setActiveTab('dashboard')} />
+      </div>
+    );
+  }
 
   return (
     <div className="app-container" data-accent={accentTheme}>
@@ -798,7 +807,6 @@ const AppContent: React.FC = () => {
                     {activeTab === 'tasks' && 'TASK TIMELINE'}
                     {activeTab === 'exams' && 'EXAM PROTOCOLS'}
                     {activeTab === 'calendar' && 'ACADEMIC CALENDAR'}
-                    {activeTab === 'studyroom' && 'FOCUS RITUALS'}
                     {activeTab === 'campus-xp' && 'PROGRESSION & REWARDS'}
                   </span>
                 </div>
@@ -808,7 +816,6 @@ const AppContent: React.FC = () => {
                   {activeTab === 'tasks' && 'Tasks & Deliverables'}
                   {activeTab === 'exams' && 'Exams & Evaluations'}
                   {activeTab === 'calendar' && 'Term Calendar'}
-                  {activeTab === 'studyroom' && 'Study Room'}
                   {activeTab === 'campus-xp' && 'Campus XP Progression'}
                 </h1>
               </div>

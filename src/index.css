@@ -2324,17 +2324,19 @@ span.badge {
    ========================================================================== */
 
 .studyroom-container {
-  position: relative;
-  width: 100%;
-  height: calc(100vh - 120px);
-  min-height: 520px;
-  border-radius: 20px;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  border-radius: 0;
   overflow: hidden;
   background-size: cover;
   background-position: center;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  z-index: 1000;
 }
 
 [data-theme="dark"] .studyroom-container::before {
@@ -2355,12 +2357,34 @@ span.badge {
   display: flex;
   flex-wrap: wrap;
   gap: 1.5rem;
-  padding: 1.8rem;
-  height: calc(100% - 68px);
+  padding: 5.2rem 2rem 5.5rem 2rem;
+  height: 100%;
   overflow-y: auto;
   justify-content: center;
   align-content: flex-start;
   align-items: flex-start;
+}
+
+.studyroom-exit-btn:hover {
+  transform: translateY(-2px);
+  background: #ffffff !important;
+  box-shadow: 0 6px 24px rgba(225, 29, 72, 0.22) !important;
+  border-color: rgba(225, 29, 72, 0.6) !important;
+}
+
+[data-theme="dark"] .studyroom-exit-btn {
+  background: rgba(26, 12, 22, 0.92) !important;
+  border-color: rgba(255, 94, 132, 0.35) !important;
+  color: #ffdce6 !important;
+}
+
+[data-theme="dark"] .studyroom-topbar > div {
+  background: rgba(26, 12, 22, 0.88) !important;
+  border-color: rgba(255, 94, 132, 0.25) !important;
+}
+
+[data-theme="dark"] .studyroom-topbar > div span {
+  color: #ffdce6 !important;
 }
 
 .study-panel {

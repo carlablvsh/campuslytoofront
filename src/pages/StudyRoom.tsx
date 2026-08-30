@@ -21,7 +21,8 @@ import {
   SkipBack,
   SkipForward,
   Search,
-  ExternalLink
+  ExternalLink,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth, API_BASE_URL } from '../context/AuthContext';
 import { generateCodeVerifier, generateCodeChallenge } from '../utils/spotifyAuth';
@@ -39,7 +40,22 @@ interface Task {
   completed: boolean;
 }
 
-export const StudyRoom: React.FC = () => {
+export interface StudyRoomProps {
+  onExit?: () => void;
+}
+
+export const StudyRoom: React.FC<StudyRoomProps> = ({ onExit }) => {
+  // Listen for Escape key to exit study room
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && onExit) {
+        onExit();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onExit]);
+
   // ==========================================
   // Toggle states for floating widgets
   // ==========================================
@@ -1007,6 +1023,83 @@ export const StudyRoom: React.FC = () => {
   return (
     <div className="studyroom-container" style={{ backgroundImage: "url('/assets/study-nook-DITl-i_n.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}>
       
+      {/* Top App-Level Fullscreen Navigation Bar */}
+      <header className="studyroom-topbar" style={{
+        position: 'absolute',
+        top: '1.25rem',
+        left: '1.5rem',
+        right: '1.5rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        zIndex: 50,
+        pointerEvents: 'none'
+      }}>
+        {/* Left Sanctuary Pill */}
+        <div style={{
+          pointerEvents: 'auto',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.65rem',
+          background: 'rgba(255, 255, 255, 0.88)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          padding: '0.45rem 1rem',
+          borderRadius: '9999px',
+          border: '1px solid rgba(255, 255, 255, 0.7)',
+          boxShadow: '0 4px 20px rgba(45, 21, 39, 0.08)'
+        }}>
+          <Coffee size={16} style={{ color: '#e11d48' }} />
+          <span style={{ fontFamily: 'var(--font-display, serif)', fontSize: '0.88rem', fontWeight: 700, color: '#2d1527', letterSpacing: '-0.01em' }}>
+            Study Room Sanctuary
+          </span>
+        </div>
+
+        {/* Right Clear Exit Button */}
+        {onExit && (
+          <button
+            type="button"
+            onClick={onExit}
+            className="studyroom-exit-btn"
+            style={{
+              pointerEvents: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.55rem',
+              background: 'rgba(255, 255, 255, 0.94)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              color: '#2d1527',
+              border: '1px solid rgba(225, 29, 72, 0.3)',
+              padding: '0.45rem 1.1rem',
+              borderRadius: '9999px',
+              fontFamily: 'var(--font-sans, sans-serif)',
+              fontSize: '0.84rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 4px 20px rgba(225, 29, 72, 0.12)',
+              transition: 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)'
+            }}
+            title="Exit Study Room (Esc)"
+          >
+            <ArrowLeft size={16} style={{ color: '#e11d48' }} />
+            <span>Exit Study Room</span>
+            <span style={{
+              fontSize: '0.62rem',
+              fontFamily: 'var(--font-mono, monospace)',
+              fontWeight: 700,
+              background: 'rgba(225, 29, 72, 0.08)',
+              color: '#e11d48',
+              padding: '0.15rem 0.45rem',
+              borderRadius: '4px',
+              marginLeft: '0.2rem'
+            }}>
+              ESC
+            </span>
+          </button>
+        )}
+      </header>
+
       {/* Dynamic workspace wrapper where cards reflow symmetrically */}
       <div className="studyroom-workspace">
         
