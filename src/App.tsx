@@ -550,16 +550,16 @@ const AppContent: React.FC = () => {
     filteredNotes.length > 0
   );
 
-  // Sidebar Menu Config (Today, Timetable, Attendance, Tasks, Exams, Calendar, Study Room, Campus XP)
+  // Sidebar Menu Config (Dashboard, Study Room, Timetable, Calendar, Attendance, Assignments, Exams, Campus XP)
   const menuItems = [
-    { id: 'dashboard', label: 'Today', glyph: '◈', icon: Sparkles },
-    { id: 'timetable', label: 'Timetable', glyph: '▤', icon: Clock },
-    { id: 'attendance', label: 'Attendance', glyph: '◐', icon: GraduationCap },
-    { id: 'tasks', label: 'Tasks', glyph: '✓', icon: ClipboardList },
-    { id: 'exams', label: 'Exams', glyph: '◇', icon: CalendarIcon },
-    { id: 'calendar', label: 'Calendar', glyph: '📅', icon: CalendarIcon },
-    { id: 'studyroom', label: 'Study room', glyph: '❍', icon: Coffee },
-    { id: 'campus-xp', label: 'Campus XP', glyph: '🏆', icon: Trophy },
+    { id: 'dashboard', label: 'Dashboard', icon: Sparkles },
+    { id: 'studyroom', label: 'Study Room', icon: Coffee },
+    { id: 'timetable', label: 'Timetable', icon: Clock },
+    { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
+    { id: 'attendance', label: 'Attendance', icon: GraduationCap },
+    { id: 'tasks', label: 'Assignments', icon: ClipboardList },
+    { id: 'exams', label: 'Exams', icon: CalendarIcon },
+    { id: 'campus-xp', label: 'Campus XP', icon: Trophy },
   ] as const;
 
   // Render view
@@ -632,6 +632,7 @@ const AppContent: React.FC = () => {
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
             {menuItems.map(item => {
               const isActive = activeTab === item.id;
+              const Icon = item.icon;
               return (
                 <button 
                   key={item.id}
@@ -642,7 +643,7 @@ const AppContent: React.FC = () => {
                     alignItems: 'center',
                     gap: '0.75rem',
                     padding: '0.6rem 0.85rem',
-                    borderRadius: '4px',
+                    borderRadius: '6px',
                     background: isActive ? 'rgba(45, 21, 39, 0.05)' : 'transparent',
                     color: isActive ? 'var(--ink)' : 'var(--ink-soft)',
                     border: 'none',
@@ -654,15 +655,14 @@ const AppContent: React.FC = () => {
                     width: '100%'
                   }}
                 >
-                  <span style={{
-                    fontSize: '0.85rem',
-                    color: isActive ? 'var(--petal)' : 'var(--ink-faint)',
-                    display: 'inline-block',
-                    width: '16px',
-                    textAlign: 'center'
-                  }}>
-                    {item.glyph}
-                  </span>
+                  <Icon 
+                    size={18} 
+                    strokeWidth={1.8} 
+                    style={{ 
+                      color: isActive ? 'var(--petal)' : 'var(--ink-soft)',
+                      flexShrink: 0 
+                    }} 
+                  />
                   <span>{item.label}</span>
                 </button>
               );
