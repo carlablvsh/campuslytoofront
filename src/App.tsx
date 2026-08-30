@@ -31,16 +31,6 @@ import {
 
 type ActiveTab = 'dashboard' | 'timetable' | 'attendance' | 'tasks' | 'exams' | 'notes' | 'calendar' | 'ai' | 'studyroom' | 'campus-xp';
 
-const CuteBowSVG: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 14, style }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ overflow: 'visible', ...style }}>
-    <path d="M12 12 C8 6, 3 8, 5 12 C7 16, 11 13, 12 12 Z" fill="#ffd1dc" stroke="#ff7899" strokeWidth="1.5" />
-    <path d="M12 12 C16 6, 21 8, 19 12 C17 16, 13 13, 12 12 Z" fill="#ffd1dc" stroke="#ff7899" strokeWidth="1.5" />
-    <circle cx="12" cy="12" r="2.5" fill="#ff7899" stroke="#ff5e84" strokeWidth="1" />
-    <path d="M11 13 C9 17, 6 20, 4 21" stroke="#ff7899" strokeWidth="1.8" strokeLinecap="round" />
-    <path d="M13 13 C15 17, 18 20, 20 21" stroke="#ff7899" strokeWidth="1.8" strokeLinecap="round" />
-  </svg>
-);
-
 const AppContent: React.FC = () => {
   const { user, loading, logout, token, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -560,16 +550,16 @@ const AppContent: React.FC = () => {
     filteredNotes.length > 0
   );
 
-  // Sidebar Menu Config (Dashboard, Study Room, Timetable, Calendar, Attendance, Assignments, Exams, Campus XP)
+  // Sidebar Menu Config (Today, Timetable, Attendance, Tasks, Exams, Calendar, Study Room, Campus XP)
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Sparkles },
-    { id: 'studyroom', label: 'Study Room', icon: Coffee },
-    { id: 'timetable', label: 'Timetable', icon: Clock },
-    { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
-    { id: 'attendance', label: 'Attendance', icon: GraduationCap },
-    { id: 'tasks', label: 'Assignments', icon: ClipboardList },
-    { id: 'exams', label: 'Exams', icon: CalendarIcon },
-    { id: 'campus-xp', label: 'Campus XP', icon: Trophy },
+    { id: 'dashboard', label: 'Today', glyph: '◈', icon: Sparkles },
+    { id: 'timetable', label: 'Timetable', glyph: '▤', icon: Clock },
+    { id: 'attendance', label: 'Attendance', glyph: '◐', icon: GraduationCap },
+    { id: 'tasks', label: 'Tasks', glyph: '✓', icon: ClipboardList },
+    { id: 'exams', label: 'Exams', glyph: '◇', icon: CalendarIcon },
+    { id: 'calendar', label: 'Calendar', glyph: '📅', icon: CalendarIcon },
+    { id: 'studyroom', label: 'Study room', glyph: '❍', icon: Coffee },
+    { id: 'campus-xp', label: 'Campus XP', glyph: '🏆', icon: Trophy },
   ] as const;
 
   // Render view
@@ -585,16 +575,12 @@ const AppContent: React.FC = () => {
         return <div className="page-tasks"><Tasks /></div>;
       case 'exams':
         return <div className="page-exams"><Exams /></div>;
-      // case 'notes':
-      //   return <div className="page-notes"><Notes /></div>;
       case 'calendar':
         return <div className="page-calendar"><CalendarView /></div>;
       case 'studyroom':
         return <div className="page-studyroom"><StudyRoom /></div>;
       case 'campus-xp':
         return <div className="page-campusxp"><CampusXP /></div>;
-      // case 'ai':
-      //   return <div className="page-ai"><AIAssistant /></div>;
       default:
         return <div className="page-dashboard"><Dashboard /></div>;
     }
@@ -603,126 +589,160 @@ const AppContent: React.FC = () => {
   return (
     <div className="app-container" data-accent={accentTheme}>
       
-      {/* DESKTOP SIDEBAR */}
-      <aside className="sidebar">
-        <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem', paddingLeft: '0.4rem', pointerEvents: 'none' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'var(--primary-glow)',
-            width: '32px',
-            height: '32px',
-            borderRadius: '8px',
-            color: 'var(--primary)',
-            flexShrink: 0
-          }}>
-            <GraduationCap size={16} />
-          </div>
-          <span style={{
-            fontWeight: 800,
-            fontSize: '1.35rem',
-            color: 'var(--primary)',
-            fontFamily: 'var(--font-serif)',
-            display: 'flex',
-            alignItems: 'center',
-            letterSpacing: '-0.3px'
-          }}>
-            Campusly
-            <CuteBowSVG size={14} style={{ alignSelf: 'flex-start', marginTop: '-3px', marginLeft: '0.2rem' }} />
-          </span>
-        </div>
-
-        <ul className="nav-links">
-          {menuItems.map(item => {
-            const Icon = item.icon;
-            return (
-              <li key={item.id}>
-                <button 
-                  className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-                  onClick={() => setActiveTab(item.id)}
-                >
-                  <Icon className="nav-item-icon" />
-                  <span>{item.label}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-
-        {/* Global Persistent XP / Level Indicator */}
-        <div 
-          onClick={() => setActiveTab('campus-xp')}
-          style={{
-            margin: '0.8rem 0 0.4rem',
-            padding: '0.7rem 0.85rem',
-            background: activeTab === 'campus-xp' ? 'rgba(255, 120, 153, 0.15)' : 'var(--bg-surface)',
-            border: activeTab === 'campus-xp' ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-            borderRadius: 'var(--radius-md)',
-            cursor: 'pointer',
-            transition: 'var(--transition)'
-          }}
-          title="View Campus XP Progression & Badges"
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <span className="badge" style={{ background: 'var(--primary)', color: '#ffffff', fontSize: '0.68rem', fontWeight: 800, padding: '0.12rem 0.45rem' }}>
-                LVL {xpSummary?.level || 1}
-              </span>
-              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                {xpSummary?.levelTitle || 'Freshman'}
-              </span>
-            </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)' }}>
-              {(xpSummary?.totalXP || 0).toLocaleString()} XP
+      {/* DESKTOP 2095 EDITORIAL SIDEBAR */}
+      <aside className="sidebar" style={{
+        width: '15.5rem',
+        background: 'var(--bg-sidebar)',
+        borderRight: '1px solid var(--line)',
+        padding: '2rem 1.2rem',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        position: 'fixed',
+        top: 0,
+        bottom: 0,
+        left: 0,
+        zIndex: 100,
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)'
+      }}>
+        <div>
+          {/* Brand Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '2.5rem', paddingLeft: '0.4rem' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2C8.5 7.5 4 10.5 4 14.5C4 18.5 7.5 22 12 22C16.5 22 20 18.5 20 14.5C20 10.5 15.5 7.5 12 2Z" fill="url(#app-petal-grad)" />
+              <defs>
+                <linearGradient id="app-petal-grad" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#f472b6" />
+                  <stop offset="1" stopColor="#e11d48" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.2rem', letterSpacing: '-0.02em', color: 'var(--ink)' }}>
+              Campusly
             </span>
           </div>
 
-          <div style={{ height: '4px', background: 'var(--bg-app)', borderRadius: '4px', overflow: 'hidden' }}>
-            <div 
-              style={{ 
-                height: '100%', 
-                width: `${xpSummary?.progressPercent || 0}%`, 
-                background: 'var(--primary)', 
-                borderRadius: '4px',
-                transition: 'width 0.4s ease'
-              }} 
-            />
+          {/* Section Label */}
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--ink-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', paddingLeft: '0.6rem', marginBottom: '0.6rem' }}>
+            Navigation
           </div>
+
+          {/* Navigation Links with Crisp Hairline Active State */}
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+            {menuItems.map(item => {
+              const isActive = activeTab === item.id;
+              return (
+                <button 
+                  key={item.id}
+                  type="button"
+                  onClick={() => setActiveTab(item.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.6rem 0.85rem',
+                    borderRadius: '4px',
+                    background: isActive ? 'rgba(45, 21, 39, 0.05)' : 'transparent',
+                    color: isActive ? 'var(--ink)' : 'var(--ink-soft)',
+                    border: 'none',
+                    fontWeight: isActive ? 700 : 500,
+                    fontSize: '0.86rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    textAlign: 'left',
+                    width: '100%'
+                  }}
+                >
+                  <span style={{
+                    fontSize: '0.85rem',
+                    color: isActive ? 'var(--petal)' : 'var(--ink-faint)',
+                    display: 'inline-block',
+                    width: '16px',
+                    textAlign: 'center'
+                  }}>
+                    {item.glyph}
+                  </span>
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* User Card Footer */}
-        <div className="sidebar-footer">
+        {/* Bottom Enrolled Profile Card */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+          
           <div 
-            className="user-profile" 
-            onClick={() => setShowProfileModal(true)} 
-            style={{ cursor: 'pointer', transition: 'background 0.2s' }}
-            title="Profile Settings"
+            onClick={() => setShowProfileModal(true)}
+            style={{
+              padding: '0.9rem',
+              borderRadius: '4px',
+              border: '1px solid var(--line)',
+              background: 'transparent',
+              cursor: 'pointer',
+              transition: 'background 0.2s ease'
+            }}
+            title="Profile & Customization"
           >
-            <div 
-              className={`user-avatar ${avatarFrame !== 'none' ? `avatar-frame-${avatarFrame}` : ''}`} 
-              style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'box-shadow 0.3s ease' }}
-            >
-              {user.avatar_url ? (
-                <img src={user.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                user.username.slice(0, 2).toLowerCase()
-              )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--ink-faint)', textTransform: 'uppercase' }}>
+                Enrolled as
+              </span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--petal)', fontWeight: 700 }}>
+                LVL {xpSummary?.level || 1}
+              </span>
             </div>
-            <div className="user-info">
-              <span className="username">{user.username}</span>
-              <span className="email">{user.email}</span>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <div 
+                className={`user-avatar ${avatarFrame !== 'none' ? `avatar-frame-${avatarFrame}` : ''}`} 
+                style={{ width: '28px', height: '28px', borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--cream)', flexShrink: 0, border: '1px solid var(--line)' }}
+              >
+                {user.avatar_url ? (
+                  <img src={user.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  user.username.slice(0, 2).toLowerCase()
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', fontWeight: 600, color: 'var(--ink)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {user.username}
+                </p>
+                <p style={{ fontSize: '0.68rem', color: 'var(--ink-faint)', margin: '0.05rem 0 0 0' }}>
+                  {xpSummary?.levelTitle || 'Scholar'}
+                </p>
+              </div>
+            </div>
+
+            {/* XP Mini Bar */}
+            <div style={{ height: '2px', background: 'var(--line)', borderRadius: '9999px', overflow: 'hidden', marginTop: '0.65rem' }}>
+              <div style={{ width: `${xpSummary?.progressPercent || 0}%`, height: '100%', background: 'var(--petal)', borderRadius: '9999px', transition: 'width 0.4s ease' }} />
             </div>
           </div>
-          
+
           <button 
-            className="btn-secondary" 
-            onClick={logout} 
-            style={{ width: '100%', padding: '0.5rem', fontSize: '0.8rem', justifyContent: 'center' }}
+            type="button"
+            onClick={logout}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--ink-faint)',
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+              padding: '0.2rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.35rem'
+            }}
+            className="hover:text-ink"
           >
-            <LogOut size={13} />
-            Sign Out
+            <LogOut size={12} />
+            <span>Sign out of campus</span>
           </button>
+
         </div>
       </aside>
 
@@ -755,39 +775,73 @@ const AppContent: React.FC = () => {
       <main className="main-content" onClick={() => { if (showNotificationsDropdown) setShowNotificationsDropdown(false); }}>
         
         {/* APP HEADER */}
-        <header className="app-header">
+        <header className="app-header" style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '1.2rem 2rem',
+          borderBottom: '1px solid var(--line)',
+          background: 'rgba(250, 246, 240, 0.75)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 90
+        }}>
           <div className="header-title">
-            {activeTab !== 'dashboard' && (
-              <>
-                <h1>
-                  {activeTab === 'timetable' && 'Weekly Timetable ✦'}
-                  {activeTab === 'attendance' && 'Attendance Margin Tracker ✦'}
-                  {activeTab === 'tasks' && 'Assignments & Checklist ✦'}
-                  {activeTab === 'exams' && 'Exams timetable ✦'}
-                  {/* {activeTab === 'notes' && 'Materials Vault ✦'} */}
-                  {activeTab === 'calendar' && 'Academic Calendar ✦'}
-                  {activeTab === 'studyroom' && 'Focus Sanctuary ✦'}
-                  {/* {activeTab === 'ai' && 'AI Study Workspace ✦'} */}
+            {activeTab !== 'dashboard' ? (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.15rem' }}>
+                  <span className="sci-fi-tag" style={{ fontSize: '0.62rem' }}>
+                    {activeTab === 'timetable' && 'SCHEDULE ENGINE'}
+                    {activeTab === 'attendance' && 'ATTENDANCE TRACKER'}
+                    {activeTab === 'tasks' && 'TASK TIMELINE'}
+                    {activeTab === 'exams' && 'EXAM PROTOCOLS'}
+                    {activeTab === 'calendar' && 'ACADEMIC CALENDAR'}
+                    {activeTab === 'studyroom' && 'FOCUS RITUALS'}
+                    {activeTab === 'campus-xp' && 'PROGRESSION & REWARDS'}
+                  </span>
+                </div>
+                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 600, color: 'var(--ink)', margin: 0 }}>
+                  {activeTab === 'timetable' && 'Weekly Timetable'}
+                  {activeTab === 'attendance' && 'Attendance & Margins'}
+                  {activeTab === 'tasks' && 'Tasks & Deliverables'}
+                  {activeTab === 'exams' && 'Exams & Evaluations'}
+                  {activeTab === 'calendar' && 'Term Calendar'}
+                  {activeTab === 'studyroom' && 'Study Room'}
+                  {activeTab === 'campus-xp' && 'Campus XP Progression'}
                 </h1>
-                <p>
-                  {activeTab === 'timetable' && 'Arrange and manage your lectures.'}
-                  {activeTab === 'attendance' && 'Calculate safe margins and log present markers.'}
-                  {activeTab === 'tasks' && 'Tackle and keep track of pending assignments.'}
-                  {activeTab === 'exams' && 'Log midterm schedules and syllabus topics.'}
-                  {/* {activeTab === 'notes' && 'Upload textbooks PDFs and view class notes.'} */}
-                  {activeTab === 'calendar' && 'A comprehensive view of your monthly deadlines.'}
-                  {activeTab === 'studyroom' && 'A cozy, distraction-free space to study, listen to ambient sounds, and plan focus blocks.'}
-                  {/* {activeTab === 'ai' && 'Ask questions and synthesize summaries of your course materials.'} */}
-                </p>
-              </>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <span className="sci-fi-tag" style={{ background: 'var(--blush)', color: 'var(--plum)' }}>
+                  TERM 01 / EQUINOX
+                </span>
+              </div>
             )}
           </div>
 
-          <div className="header-actions">
-            {/* Pinterest style Search placeholder - Opens functional Spotlight search on click */}
-            <div className="search-container" onClick={() => setShowSearch(true)}>
-              <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)', cursor: 'pointer' }} />
-              <input type="text" className="search-input" placeholder="Search anything... ⌘K" style={{ cursor: 'pointer' }} readOnly />
+          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {/* 2095 Search Bar */}
+            <div 
+              onClick={() => setShowSearch(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'rgba(255, 253, 249, 0.9)',
+                border: '1px solid var(--line)',
+                borderRadius: '9999px',
+                padding: '0.45rem 1rem',
+                boxShadow: 'var(--shadow-soft)',
+                cursor: 'pointer',
+                width: '220px'
+              }}
+            >
+              <Search size={13} style={{ color: 'var(--ink-faint)' }} />
+              <span style={{ fontSize: '0.78rem', color: 'var(--ink-faint)', fontWeight: 500 }}>
+                Search campus... ⌘K
+              </span>
             </div>
 
             {/* Notification bell with count badge & dropdown panel */}

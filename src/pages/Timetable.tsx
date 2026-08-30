@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth, API_BASE_URL } from '../context/AuthContext';
-import { MapPin, Plus, X, Clock, Edit2, Trash2, Check, Sparkles, Upload, Bot, Calendar as CalendarIcon } from 'lucide-react';
+import { MapPin, X, Sparkles, Trash2, Grid, List } from 'lucide-react';
 import { formatLocalDate, addDays } from '../utils/dateUtils';
 
 interface Subject {
@@ -27,45 +27,49 @@ interface ClassItem {
   recurrence_days?: string | null;
 }
 
+interface AcademicBreak {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+}
+
 const DAYS_OF_WEEK = [
-  { value: 1, label: 'Monday' },
-  { value: 2, label: 'Tuesday' },
-  { value: 3, label: 'Wednesday' },
-  { value: 4, label: 'Thursday' },
-  { value: 5, label: 'Friday' },
-  { value: 6, label: 'Saturday' },
-  { value: 0, label: 'Sunday' }
+  { value: 1, label: 'Monday', short: 'Mon' },
+  { value: 2, label: 'Tuesday', short: 'Tue' },
+  { value: 3, label: 'Wednesday', short: 'Wed' },
+  { value: 4, label: 'Thursday', short: 'Thu' },
+  { value: 5, label: 'Friday', short: 'Fri' },
+  { value: 6, label: 'Saturday', short: 'Sat' },
+  { value: 0, label: 'Sunday', short: 'Sun' }
 ];
 
 const PRESETS_COLORS = [
-  '#ffd1dc', // Blush Pink
-  '#cce4f6', // Powder Blue
-  '#e5dbfb', // Lavender
-  '#c7ebd7', // Mint
-  '#ffecb3', // Butter Yellow
-  '#ffe2cb', // Soft Peach
+  '#f472b6',
+  '#99f6e4',
+  '#e9d5ff',
+  '#fce7f3',
+  '#fef08a',
+  '#fed7aa',
 ];
 
 export const Timetable: React.FC = () => {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [breaks, setBreaks] = useState<AcademicBreak[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // View Mode: 'week' (Default) vs 'day'
+  const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
+  const [selectedDay, setSelectedDay] = useState<number>(1); // Default to Monday
 
   // Modal control states
   const [showClassModal, setShowClassModal] = useState<boolean>(false);
   const [showSubjectModal, setShowSubjectModal] = useState<boolean>(false);
+  const [showBreaksModal, setShowBreaksModal] = useState<boolean>(false);
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
-  const [showReviewScreen, setShowReviewScreen] = useState<boolean>(false);
-
-  // AI Timetable Importer Form State
-  const [importBranch, setImportBranch] = useState<string>('');
-  const [importSemester, setImportSemester] = useState<string>('1');
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importLoading, setImportLoading] = useState<boolean>(false);
-  const [importError, setImportError] = useState<string | null>(null);
-  const [reviewClasses, setReviewClasses] = useState<any[]>([]);
 
   // Add Class Form State
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
@@ -81,16 +85,7 @@ export const Timetable: React.FC = () => {
   const [recurrenceType, setRecurrenceType] = useState<string>('weekly');
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
-  const [isSubmittingSubject, setIsSubmittingSubject] = useState<boolean>(false);
   const [isSubmittingClass, setIsSubmittingClass] = useState<boolean>(false);
-
-  // Breaks Management States
-  const [showBreaksModal, setShowBreaksModal] = useState<boolean>(false);
-  const [breaks, setBreaks] = useState<any[]>([]);
-  const [breakName, setBreakName] = useState<string>('');
-  const [breakStart, setBreakStart] = useState<string>('');
-  const [breakEnd, setBreakEnd] = useState<string>('');
-  const [breaksLoading, setBreaksLoading] = useState<boolean>(false);
 
   // Add Subject Form State
   const [subjectName, setSubjectName] = useState<string>('');
@@ -98,191 +93,49 @@ export const Timetable: React.FC = () => {
   const [targetAttendance, setTargetAttendance] = useState<number>(75);
   const [selectedColor, setSelectedColor] = useState<string>(PRESETS_COLORS[0]);
 
-  // Subject Edit State
-  const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
-  const [editName, setEditName] = useState<string>('');
-  const [editCode, setEditCode] = useState<string>('');
-  const [editTargetAttendance, setEditTargetAttendance] = useState<number>(75);
-  const [editColor, setEditColor] = useState<string>(PRESETS_COLORS[0]);
+  // Break Form State
+  const [breakName, setBreakName] = useState<string>('');
+  const [breakStartDate, setBreakStartDate] = useState<string>('');
+  const [breakEndDate, setBreakEndDate] = useState<string>('');
+  const [breakSubmitting, setBreakSubmitting] = useState<boolean>(false);
 
-  const startEditSubject = (subject: Subject) => {
-    setEditingSubjectId(subject.id);
-    setEditName(subject.name);
-    setEditCode(subject.code);
-    setEditTargetAttendance(subject.target_attendance);
-    setEditColor(subject.color);
-  };
-
-  const cancelEditSubject = () => {
-    setEditingSubjectId(null);
-    setFormError(null);
-  };
-
-  // Submit update subject
-  const handleUpdateSubject = async (e: React.FormEvent, subjectId: string) => {
-    e.preventDefault();
-    setFormError(null);
-
-    if (!editName || !editCode) {
-      setFormError('Course Name and Code are required.');
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/academic/subjects/${subjectId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: editName,
-          code: editCode,
-          target_attendance: editTargetAttendance,
-          color: editColor
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to update subject.');
-      }
-
-      setSubjects(prev => prev.map(s => s.id === subjectId ? data : s));
-      setClasses(prev => prev.map(c => c.subject_id === subjectId ? {
-        ...c,
-        subject_name: data.name,
-        subject_code: data.code,
-        subject_color: data.color
-      } : c));
-
-      setEditingSubjectId(null);
-    } catch (err: any) {
-      setFormError(err.message);
-    }
-  };
-
-  // Delete subject handler
-  const handleDeleteSubject = async (subjectId: string) => {
-    if (!window.confirm('Delete subject and all associated classes/records?')) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/academic/subjects/${subjectId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to delete subject.');
-      }
-
-      setSubjects(prev => prev.filter(s => s.id !== subjectId));
-      setClasses(prev => prev.filter(c => c.subject_id !== subjectId));
-
-      if (selectedSubjectId === subjectId) {
-        setSelectedSubjectId('');
-      }
-    } catch (err: any) {
-      alert(err.message || 'Error deleting subject.');
-    }
-  };
+  // AI Import Form State
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [branch, setBranch] = useState<string>('');
+  const [semester, setSemester] = useState<string>('');
+  const [isExtracting, setIsExtracting] = useState<boolean>(false);
+  const [extractedClasses, setExtractedClasses] = useState<any[]>([]);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [subRes, classRes, breakRes] = await Promise.all([
+      const [subRes, classRes, breaksRes] = await Promise.all([
         fetch(`${API_BASE_URL}/academic/subjects`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_BASE_URL}/academic/classes`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_BASE_URL}/academic/breaks`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
-      if (!subRes.ok || !classRes.ok || !breakRes.ok) {
-        throw new Error('Error loading schedule resources.');
+      if (!subRes.ok || !classRes.ok) {
+        throw new Error('Failed to load timetable data.');
       }
 
       const subData = await subRes.json();
       const classData = await classRes.json();
-      const breakData = await breakRes.json();
-      
+      const breaksData = breaksRes.ok ? await breaksRes.json() : [];
+
       setSubjects(subData);
       setClasses(classData);
-      setBreaks(breakData);
-      
-      if (subData.length > 0) {
+      setBreaks(breaksData);
+
+      if (subData.length > 0 && !selectedSubjectId) {
         setSelectedSubjectId(subData[0].id);
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Error communicating with server.');
+      setError(err.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCreateBreak = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!breakName || !breakStart || !breakEnd) {
-      alert('All break fields are required.');
-      return;
-    }
-    if (breakStart > breakEnd) {
-      alert('Start date must be before or equal to end date.');
-      return;
-    }
-    try {
-      setBreaksLoading(true);
-      const res = await fetch(`${API_BASE_URL}/academic/breaks`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: breakName.trim(),
-          start_date: breakStart,
-          end_date: breakEnd
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to save break.');
-      }
-
-      setBreaks(prev => [...prev, data]);
-      setBreakName('');
-      setBreakStart('');
-      setBreakEnd('');
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message || 'Error saving break.');
-    } finally {
-      setBreaksLoading(false);
-    }
-  };
-
-  const handleDeleteBreak = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this break period?')) return;
-    try {
-      setBreaksLoading(true);
-      const res = await fetch(`${API_BASE_URL}/academic/breaks/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to delete break.');
-      }
-      setBreaks(prev => prev.filter(b => b.id !== id));
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message || 'Error deleting break.');
-    } finally {
-      setBreaksLoading(false);
     }
   };
 
@@ -292,37 +145,100 @@ export const Timetable: React.FC = () => {
     }
   }, [token]);
 
-  // Handle class deletion
-  const handleDeleteClass = async (classId: string) => {
-    if (!window.confirm('Are you sure you want to delete this class from your schedule?')) return;
+  const handleDeleteClass = async (id: string) => {
+    if (!window.confirm('Delete this scheduled class?')) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/academic/classes/${classId}`, {
+      const res = await fetch(`${API_BASE_URL}/academic/classes/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
       if (res.ok) {
-        setClasses(prev => prev.filter(c => c.id !== classId));
+        setClasses(prev => prev.filter(c => c.id !== id));
       }
     } catch (err) {
       console.error(err);
     }
   };
 
-  // Submit new subject
-  const handleCreateSubject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
+  const startEditClass = (c: ClassItem) => {
+    setEditingClassId(c.id);
+    setSelectedSubjectId(c.subject_id);
+    setClassDay(c.day_of_week);
+    setStartTime(c.start_time);
+    setEndTime(c.end_time);
+    setLocation(c.location || '');
+    setStartDate(c.start_date ? formatLocalDate(new Date(c.start_date)) : formatLocalDate(new Date()));
+    setEndDate(c.end_date ? formatLocalDate(new Date(c.end_date)) : formatLocalDate(addDays(new Date(), 180)));
+    setRecurrenceType(c.recurrence_type || 'weekly');
+    if (c.recurrence_days) {
+      try {
+        setRecurrenceDays(JSON.parse(c.recurrence_days));
+      } catch (e) {
+        setRecurrenceDays([c.day_of_week]);
+      }
+    } else {
+      setRecurrenceDays([c.day_of_week]);
+    }
+    setShowClassModal(true);
+  };
 
-    if (!subjectName.trim() || !subjectCode.trim()) {
-      setFormError('Course Name and Code are required.');
+  const handleSaveClass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSubjectId) {
+      setFormError('Please select a subject.');
       return;
     }
 
-    if (isSubmittingSubject) return;
+    setIsSubmittingClass(true);
+    setFormError(null);
+
+    const payload = {
+      subject_id: selectedSubjectId,
+      day_of_week: classDay,
+      start_time: startTime,
+      end_time: endTime,
+      location: location.trim(),
+      start_date: startDate,
+      end_date: endDate,
+      recurrence_type: recurrenceType,
+      recurrence_days: JSON.stringify(recurrenceType === 'weekly' ? [classDay] : recurrenceDays)
+    };
 
     try {
-      setIsSubmittingSubject(true);
+      const url = editingClassId 
+        ? `${API_BASE_URL}/academic/classes/${editingClassId}` 
+        : `${API_BASE_URL}/academic/classes`;
+      const method = editingClassId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to save class slot.');
+      }
+
+      fetchData();
+      setShowClassModal(false);
+      setEditingClassId(null);
+    } catch (err: any) {
+      setFormError(err.message);
+    } finally {
+      setIsSubmittingClass(false);
+    }
+  };
+
+  const handleAddSubject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subjectName.trim() || !subjectCode.trim()) return;
+
+    try {
       const res = await fetch(`${API_BASE_URL}/academic/subjects`, {
         method: 'POST',
         headers: {
@@ -337,1190 +253,737 @@ export const Timetable: React.FC = () => {
         })
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to create subject.');
+      if (res.ok) {
+        fetchData();
+        setSubjectName('');
+        setSubjectCode('');
+        setShowSubjectModal(false);
       }
-
-      setSubjects(prev => {
-        if (prev.some(s => s.id === data.id)) return prev;
-        return [...prev, data];
-      });
-      setSelectedSubjectId(data.id);
-      
-      // Reset form & close modal
-      setSubjectName('');
-      setSubjectCode('');
-      setTargetAttendance(75);
-      setSelectedColor(PRESETS_COLORS[0]);
-      setShowSubjectModal(false);
-    } catch (err: any) {
-      setFormError(err.message);
-    } finally {
-      setIsSubmittingSubject(false);
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const startEditClass = (c: ClassItem) => {
-    setEditingClassId(c.id);
-    setSelectedSubjectId(c.subject_id);
-    setClassDay(c.day_of_week);
-    setStartTime(c.start_time);
-    setEndTime(c.end_time);
-    setLocation(c.location || '');
-    setStartDate(c.start_date || formatLocalDate(new Date()));
-    setEndDate(c.end_date || formatLocalDate(addDays(new Date(), 180)));
-    setRecurrenceType(c.recurrence_type || 'weekly');
-    setRecurrenceDays(c.recurrence_days ? c.recurrence_days.split(',').map(Number) : []);
-    setFormError(null);
-    setShowClassModal(true);
-  };
-
-  // Submit new or updated class
-  const handleCreateClass = async (e: React.FormEvent) => {
+  // Term Breaks Handlers
+  const handleAddBreak = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError(null);
-
-    if (!selectedSubjectId) {
-      setFormError('Please select or create a subject first.');
-      return;
-    }
-
-    if (!startTime || !endTime) {
-      setFormError('Start and end times are required.');
-      return;
-    }
-
-    // Time logic check
-    if (startTime >= endTime) {
-      setFormError('Class start time must be before end time.');
-      return;
-    }
-
-    if (isSubmittingClass) return;
-
-    const payload = {
-      subject_id: selectedSubjectId,
-      day_of_week: classDay,
-      start_time: startTime,
-      end_time: endTime,
-      location: location.trim(),
-      start_date: startDate,
-      end_date: endDate,
-      recurrence_type: recurrenceType,
-      recurrence_days: recurrenceType === 'custom_days' ? recurrenceDays.join(',') : null
-    };
-
+    if (!breakName.trim() || !breakStartDate || !breakEndDate) return;
+    setBreakSubmitting(true);
     try {
-      setIsSubmittingClass(true);
-      const url = editingClassId 
-        ? `${API_BASE_URL}/academic/classes/${editingClassId}` 
-        : `${API_BASE_URL}/academic/classes`;
-      
-      const method = editingClassId ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
+      const res = await fetch(`${API_BASE_URL}/academic/breaks`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          name: breakName.trim(),
+          start_date: breakStartDate,
+          end_date: breakEndDate
+        })
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to save class.');
+      if (res.ok) {
+        setBreakName('');
+        setBreakStartDate('');
+        setBreakEndDate('');
+        fetchData();
       }
-
-      if (editingClassId) {
-        setClasses(prev => prev.map(item => item.id === editingClassId ? data : item));
-      } else {
-        setClasses(prev => {
-          if (prev.some(c => c.id === data.id)) return prev;
-          return [...prev, data];
-        });
-      }
-      
-      // Clear forms
-      setLocation('');
-      setEditingClassId(null);
-      setRecurrenceType('weekly');
-      setRecurrenceDays([]);
-      setShowClassModal(false);
-    } catch (err: any) {
-      setFormError(err.message);
+    } catch (err) {
+      console.error(err);
     } finally {
-      setIsSubmittingClass(false);
+      setBreakSubmitting(false);
     }
   };
 
-  // AI Timetable Importer Handlers
-  const compressImage = async (file: File): Promise<Blob | File> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 1200;
-          const MAX_HEIGHT = 1200;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                resolve(blob);
-              } else {
-                resolve(file);
-              }
-            },
-            'image/jpeg',
-            0.7
-          );
-        };
-        img.onerror = () => resolve(file);
-      };
-      reader.onerror = () => resolve(file);
-    });
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setImportFile(e.target.files[0]);
+  const handleDeleteBreak = async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/academic/breaks/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setBreaks(prev => prev.filter(b => b.id !== id));
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const handleAnalyzeTimetable = async (e: React.FormEvent) => {
+  // AI Timetable Extraction Handler
+  const handleExtractTimetable = async (e: React.FormEvent) => {
     e.preventDefault();
-    setImportError(null);
-    
     if (!importFile) {
-      setImportError('Please select a timetable image or PDF file.');
-      return;
-    }
-    if (!importBranch || !importSemester) {
-      setImportError('Please enter your branch and semester.');
+      setImportError('Please select a timetable image or PDF.');
       return;
     }
 
-    setImportLoading(true);
-
-    try {
-      let fileToSend: Blob | File = importFile;
-      if (importFile.type.startsWith('image/')) {
-        fileToSend = await compressImage(importFile);
-      } else if (importFile.size > 4 * 1024 * 1024) {
-        throw new Error('PDF files must be under 4MB. Please compress your PDF or upload an image.');
-      }
-
-      const formData = new FormData();
-      formData.append('timetable', fileToSend, importFile.name);
-      formData.append('branch', importBranch);
-      formData.append('semester', importSemester);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        controller.abort();
-      }, 40000); // 40 seconds timeout
-
-      const res = await fetch(`${API_BASE_URL}/ai/import-timetable`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData,
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (res.status === 504) {
-        throw new Error('Timetable analysis timed out. The image might be too complex or large. Please try a simpler file.');
-      }
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to analyze timetable with AI.');
-      }
-
-      setReviewClasses(data.classes || []);
-      setShowReviewScreen(true);
-      setShowImportModal(false);
-    } catch (err: any) {
-      console.error('Import error details:', err);
-      if (err.name === 'AbortError') {
-        setImportError('The request timed out. Please check your internet connection or try with a smaller, compressed image.');
-      } else {
-        setImportError(err.message || 'Error occurred while communicating with the AI service.');
-      }
-    } finally {
-      setImportLoading(false);
-    }
-  };
-
-  const handleEditReviewClass = (index: number, field: string, value: any) => {
-    setReviewClasses(prev => prev.map((c, i) => i === index ? { ...c, [field]: value } : c));
-  };
-
-  const handleDeleteReviewClass = (index: number) => {
-    setReviewClasses(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleAddReviewClassRow = () => {
-    setReviewClasses(prev => [
-      ...prev,
-      {
-        day: 'Monday',
-        start_time: '09:00',
-        end_time: '10:00',
-        subject_name: '',
-        subject_code: '',
-        class_type: 'lecture',
-        room: '',
-        faculty: ''
-      }
-    ]);
-  };
-
-  const handleConfirmImport = async () => {
+    setIsExtracting(true);
     setImportError(null);
-    setImportLoading(true);
+
+    const formData = new FormData();
+    formData.append('file', importFile);
+    if (branch) formData.append('branch', branch);
+    if (semester) formData.append('semester', semester);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/academic/classes/import`, {
+      const res = await fetch(`${API_BASE_URL}/ai/extract-timetable`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ classes: reviewClasses })
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to save timetable.');
+        throw new Error(data.error || 'Failed to analyze timetable document.');
       }
 
-      // Re-fetch data to refresh board
-      fetchData();
-      
-      // Close review and reset
-      setShowReviewScreen(false);
-      setReviewClasses([]);
-      setImportFile(null);
-      setImportBranch('');
-      setImportSemester('1');
+      setExtractedClasses(Array.isArray(data) ? data : data.classes || []);
     } catch (err: any) {
       setImportError(err.message);
-      // Keep review screen open so they can retry or fix conflicts
     } finally {
-      setImportLoading(false);
+      setIsExtracting(false);
+    }
+  };
+
+  const handleSaveImportedClasses = async () => {
+    try {
+      for (const item of extractedClasses) {
+        const dayMap: Record<string, number> = {
+          'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4, 'friday': 5, 'saturday': 6, 'sunday': 0
+        };
+        const dayNum = dayMap[item.day?.toLowerCase()] ?? 1;
+
+        let sub = subjects.find(s => s.code.toLowerCase() === (item.subject_code || '').toLowerCase());
+        let subId = sub?.id;
+
+        if (!subId && item.subject_name) {
+          const createSubRes = await fetch(`${API_BASE_URL}/academic/subjects`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+              name: item.subject_name,
+              code: item.subject_code || item.subject_name.slice(0, 6).toUpperCase(),
+              target_attendance: 75,
+              color: PRESETS_COLORS[Math.floor(Math.random() * PRESETS_COLORS.length)]
+            })
+          });
+          if (createSubRes.ok) {
+            const newSub = await createSubRes.json();
+            subId = newSub.id;
+          }
+        }
+
+        if (subId) {
+          await fetch(`${API_BASE_URL}/academic/classes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+              subject_id: subId,
+              day_of_week: dayNum,
+              start_time: item.start_time || '09:00',
+              end_time: item.end_time || '10:00',
+              location: item.room || item.location || ''
+            })
+          });
+        }
+      }
+
+      fetchData();
+      setShowImportModal(false);
+      setExtractedClasses([]);
+      setImportFile(null);
+      alert('Imported schedule sessions saved successfully!');
+    } catch (err: any) {
+      alert('Error saving imported schedule: ' + err.message);
     }
   };
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <div style={{ color: 'var(--text-secondary)' }}>Loading schedule board...</div>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', color: 'var(--ink-soft)' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.15rem' }}>
+          Opening weekly schedule atelier... ✧
+        </div>
       </div>
     );
   }
 
-  // Group classes by day for displaying
-  const getClassesForDay = (dayVal: number) => {
-    return classes.filter(c => c.day_of_week === dayVal);
-  };
+  // Weekday columns for the Weekly Timetable Grid
+  const weekDaysToRender = DAYS_OF_WEEK.slice(0, 5); // Monday - Friday by default
+  const hasWeekendClasses = classes.some(c => c.day_of_week === 6 || c.day_of_week === 0);
+  const activeColumns = hasWeekendClasses ? DAYS_OF_WEEK : weekDaysToRender;
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+    <div className="animate-page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', maxWidth: '1240px', margin: '0 auto', paddingBottom: '3.5rem' }}>
       
-      {/* Header section with buttons */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
-        <button 
-          className="btn-secondary" 
-          onClick={() => setShowImportModal(true)}
-          style={{ borderColor: '#ff7899', color: '#ff7899', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-        >
-          <Sparkles size={14} />
-          Import with AI
-        </button>
-        <button 
-          className="btn-secondary" 
-          onClick={() => setShowSubjectModal(true)}
-          style={{ borderColor: '#ff7899', color: '#ff7899', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-        >
-          <Edit2 size={14} />
-          Manage subjects
-        </button>
-        <button 
-          className="btn-secondary" 
-          onClick={() => setShowBreaksModal(true)}
-          style={{ borderColor: '#ff7899', color: '#ff7899', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-        >
-          <CalendarIcon size={14} />
-          Manage Breaks
-        </button>
-        <button className="btn-primary" onClick={() => {
-          setEditingClassId(null);
-          setSelectedSubjectId(subjects.length > 0 ? subjects[0].id : '');
-          setStartTime('09:00');
-          setEndTime('10:00');
-          setLocation('');
-          setStartDate(formatLocalDate(new Date()));
-          setEndDate(formatLocalDate(addDays(new Date(), 180)));
-          setRecurrenceType('weekly');
-          setRecurrenceDays([]);
-          setShowClassModal(true);
+      {/* 1. OPEN CANVAS EDITORIAL HEADER */}
+      <div style={{ borderBottom: '1px solid var(--line)', paddingBottom: '2rem' }}>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '0.8rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <span className="sci-fi-tag">WEEKLY TIMETABLE</span>
+            
+            {/* View Switch: Weekly Grid vs Day Agenda */}
+            <div style={{ display: 'flex', border: '1px solid var(--line)', borderRadius: '4px', overflow: 'hidden' }}>
+              <button
+                type="button"
+                onClick={() => setViewMode('week')}
+                style={{
+                  padding: '0.3rem 0.65rem',
+                  fontSize: '0.72rem',
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 650,
+                  border: 'none',
+                  background: viewMode === 'week' ? 'var(--plum)' : 'transparent',
+                  color: viewMode === 'week' ? 'var(--cream)' : 'var(--ink-soft)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem'
+                }}
+              >
+                <Grid size={11} />
+                <span>WEEK GRID</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('day')}
+                style={{
+                  padding: '0.3rem 0.65rem',
+                  fontSize: '0.72rem',
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 650,
+                  border: 'none',
+                  background: viewMode === 'day' ? 'var(--plum)' : 'transparent',
+                  color: viewMode === 'day' ? 'var(--cream)' : 'var(--ink-soft)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem'
+                }}
+              >
+                <List size={11} />
+                <span>DAY VIEW</span>
+              </button>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button 
+              type="button"
+              onClick={() => setShowBreaksModal(true)}
+              style={{ padding: '0.4rem 0.85rem', fontSize: '0.74rem', fontFamily: 'var(--font-mono)', fontWeight: 600, background: 'transparent', border: '1px solid var(--line)', borderRadius: '9999px', cursor: 'pointer', color: 'var(--ink-soft)' }}
+            >
+              TERM BREAKS ({breaks.length})
+            </button>
+            <button 
+              type="button"
+              onClick={() => setShowSubjectModal(true)}
+              style={{ padding: '0.4rem 0.85rem', fontSize: '0.74rem', fontFamily: 'var(--font-mono)', fontWeight: 600, background: 'transparent', border: '1px solid var(--line)', borderRadius: '9999px', cursor: 'pointer', color: 'var(--ink-soft)' }}
+            >
+              MANAGE SUBJECTS
+            </button>
+            <button 
+              type="button"
+              onClick={() => {
+                setExtractedClasses([]);
+                setImportError(null);
+                setShowImportModal(true);
+              }}
+              style={{ padding: '0.4rem 0.95rem', fontSize: '0.74rem', fontFamily: 'var(--font-mono)', fontWeight: 700, background: 'rgba(244, 114, 182, 0.15)', border: '1px solid var(--petal)', borderRadius: '9999px', cursor: 'pointer', color: 'var(--plum)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              <Sparkles size={12} style={{ color: 'var(--petal)' }} />
+              <span>IMPORT WITH AI</span>
+            </button>
+            <button 
+              type="button"
+              onClick={() => {
+                setEditingClassId(null);
+                setSelectedSubjectId(subjects.length > 0 ? subjects[0].id : '');
+                setStartTime('09:00');
+                setEndTime('10:00');
+                setLocation('');
+                setStartDate(formatLocalDate(new Date()));
+                setEndDate(formatLocalDate(addDays(new Date(), 180)));
+                setRecurrenceType('weekly');
+                setRecurrenceDays([]);
+                setShowClassModal(true);
+              }}
+              style={{ padding: '0.4rem 1.1rem', fontSize: '0.76rem', fontFamily: 'var(--font-mono)', fontWeight: 700, background: 'var(--plum)', border: 'none', borderRadius: '9999px', cursor: 'pointer', color: 'var(--cream)' }}
+            >
+              + ADD SESSION
+            </button>
+          </div>
+        </div>
+
+        <h1 style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 'clamp(2.1rem, 3.8vw, 3rem)',
+          fontWeight: 400,
+          lineHeight: 1.08,
+          letterSpacing: '-0.03em',
+          color: 'var(--ink)',
+          margin: 0
         }}>
-          <Plus size={16} />
-          Add class
-        </button>
+          Time you can see the <br />
+          <span style={{ fontStyle: 'italic', color: 'var(--petal)', fontWeight: 300 }}>shape of</span>.
+        </h1>
+
+        {/* Active Breaks Strip */}
+        {breaks.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginTop: '1.2rem', padding: '0.6rem 0.9rem', border: '1px dashed var(--petal)', borderRadius: '4px', background: 'rgba(244, 114, 182, 0.06)', width: 'fit-content' }}>
+            <span style={{ fontSize: '0.72rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--plum)' }}>
+              ✦ ACTIVE TERM BREAKS:
+            </span>
+            <span style={{ fontSize: '0.76rem', color: 'var(--ink-soft)' }}>
+              {breaks.map(b => `${b.name} (${new Date(b.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${new Date(b.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})`).join(' · ')}
+            </span>
+          </div>
+        )}
+
       </div>
 
       {error && (
-        <div className="alert-banner danger">
-          <span>{error}</span>
+        <div style={{ padding: '1rem', background: '#fee2e2', color: '#991b1b', borderRadius: '4px', fontSize: '0.85rem' }}>
+          {error}
         </div>
       )}
 
-      {/* Timetable schedule grid */}
-      <div className="timetable-grid-container">
-        <div className="timetable-week-columns">
-          {DAYS_OF_WEEK.map(day => {
-            const dayClasses = getClassesForDay(day.value);
-            return (
-              <div key={day.value} style={{ display: 'contents' }}>
-                <div className="day-column-header" style={{ fontFamily: 'var(--font-serif)', fontSize: '0.9rem' }}>
-                  {day.label.slice(0, 3)}
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 500, marginTop: '0.1rem' }}>
-                    {dayClasses.length} {dayClasses.length === 1 ? 'class' : 'classes'}
+      {/* 2. REAL WEEKLY TIMETABLE GRID MATRIX */}
+      {viewMode === 'week' ? (
+        <div style={{ overflowX: 'auto', paddingBottom: '1rem' }}>
+          
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${activeColumns.length}, minmax(210px, 1fr))`,
+            gap: '1px',
+            background: 'var(--line)',
+            border: '1px solid var(--line)',
+            borderRadius: '4px'
+          }}>
+            {activeColumns.map(day => {
+              const dayClasses = classes
+                .filter(c => c.day_of_week === day.value)
+                .sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+              return (
+                <div 
+                  key={day.value}
+                  style={{
+                    background: 'var(--cream)',
+                    minHeight: '440px',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}
+                >
+                  {/* Day Column Header - Uniform Neutral Styling for all Days */}
+                  <div style={{
+                    padding: '0.9rem 1rem',
+                    borderBottom: '1px solid var(--line)',
+                    background: 'transparent',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 700, color: 'var(--ink)' }}>
+                        {day.label.toUpperCase()}
+                      </span>
+                    </div>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-faint)' }}>
+                      {dayClasses.length} {dayClasses.length === 1 ? 'CLASS' : 'CLASSES'}
+                    </span>
+                  </div>
+
+                  {/* Day Schedule Lanes */}
+                  <div style={{ padding: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
+                    {dayClasses.length === 0 ? (
+                      <div style={{ padding: '2rem 0.5rem', textAlign: 'center', color: 'var(--ink-faint)', fontStyle: 'italic', fontSize: '0.78rem' }}>
+                        — Free Day —
+                      </div>
+                    ) : (
+                      dayClasses.map(c => (
+                        <div
+                          key={c.id}
+                          onClick={() => startEditClass(c)}
+                          style={{
+                            padding: '0.85rem',
+                            border: '1px solid var(--line)',
+                            borderLeft: `4px solid ${c.subject_color || 'var(--petal)'}`,
+                            borderRadius: '3px',
+                            background: '#ffffff',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            boxShadow: '0 1px 2px rgba(45, 21, 39, 0.02)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', fontWeight: 700, color: c.subject_color || 'var(--petal)' }}>
+                              {c.subject_code}
+                            </span>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-soft)', fontWeight: 650 }}>
+                              {c.start_time}–{c.end_time}
+                            </span>
+                          </div>
+
+                          <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '0.96rem', fontWeight: 600, color: 'var(--ink)', margin: '0.1rem 0 0.4rem 0', lineHeight: 1.25 }}>
+                            {c.subject_name}
+                          </h4>
+
+                          {c.location && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: 'var(--ink-faint)' }}>
+                              <MapPin size={10} style={{ color: 'var(--petal)' }} />
+                              <span>{c.location}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        <div className="timetable-week-columns">
-          {DAYS_OF_WEEK.map(day => {
-            const dayClasses = getClassesForDay(day.value);
-            return (
-              <div key={day.value} className="day-column-body">
-                {dayClasses.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem 0.2rem', color: 'var(--text-muted)', fontSize: '0.75rem', border: '1px dashed rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                    No classes
-                  </div>
-                ) : (
-                  dayClasses.map(c => (
-                    <div 
-                      key={c.id} 
-                      className="timetable-card"
-                      onClick={() => startEditClass(c)}
-                      style={{ 
-                        '--item-color': c.subject_color,
-                        '--item-color-glow': c.subject_color + '18',
-                        cursor: 'pointer'
-                      } as React.CSSProperties}
-                    >
-                      <button className="delete-btn" title="Delete class" onClick={(e) => { e.stopPropagation(); handleDeleteClass(c.id); }}>
-                        <X size={10} />
-                      </button>
-                      <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{c.subject_code}</span>
-                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.subject_name}</span>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: 'var(--text-secondary)', fontSize: '0.7rem', marginTop: '0.2rem' }}>
-                        <Clock size={10} />
-                        <span>{c.start_time} - {c.end_time}</span>
+        </div>
+      ) : (
+        /* DAY AGENDA VIEW */
+        <div>
+          {/* Day Selector Tabs */}
+          <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+            {DAYS_OF_WEEK.map(d => {
+              const count = classes.filter(c => c.day_of_week === d.value).length;
+              const isSelected = selectedDay === d.value;
+              return (
+                <button
+                  key={d.value}
+                  type="button"
+                  onClick={() => setSelectedDay(d.value)}
+                  style={{
+                    padding: '0.45rem 0.95rem',
+                    fontSize: '0.78rem',
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: isSelected ? 700 : 500,
+                    border: isSelected ? '1px solid var(--plum)' : '1px solid var(--line)',
+                    borderRadius: '4px',
+                    background: isSelected ? 'var(--plum)' : 'transparent',
+                    color: isSelected ? 'var(--cream)' : 'var(--ink-soft)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <span>{d.label.slice(0, 3).toUpperCase()}</span>
+                  <span style={{ fontSize: '0.65rem', opacity: 0.7 }}>({count})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {classes.filter(c => c.day_of_week === selectedDay).length === 0 ? (
+            <div style={{ padding: '3.5rem 0', color: 'var(--ink-faint)', fontStyle: 'italic', fontSize: '0.95rem' }}>
+              No scheduled lectures on this day. The afternoon is open.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {classes.filter(c => c.day_of_week === selectedDay).map(c => (
+                <div
+                  key={c.id}
+                  onClick={() => startEditClass(c)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '1.3rem 0',
+                    borderBottom: '1px solid var(--line)',
+                    cursor: 'pointer',
+                    transition: 'background 0.2s'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                    <div style={{ width: '110px', fontFamily: 'var(--font-mono)', fontSize: '0.84rem', fontWeight: 650, color: 'var(--ink)' }}>
+                      {c.start_time}–{c.end_time}
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 700, color: c.subject_color || 'var(--petal)' }}>
+                          {c.subject_code}
+                        </span>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 500, color: 'var(--ink)', margin: 0 }}>
+                          {c.subject_name}
+                        </h3>
                       </div>
-                      
                       {c.location && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
-                          <MapPin size={10} />
-                          <span>{c.location}</span>
+                        <div style={{ fontSize: '0.74rem', color: 'var(--ink-faint)', marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <MapPin size={11} style={{ color: 'var(--petal)' }} />
+                          {c.location}
                         </div>
                       )}
                     </div>
-                  ))
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+                  </div>
 
-      {/* MODAL 1: ADD CLASS FORM */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteClass(c.id); }}
+                      style={{ background: 'none', border: 'none', color: 'var(--ink-faint)', cursor: 'pointer' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* CLASS MODAL */}
       {showClassModal && (
-        <div className="modal-overlay" onClick={() => setShowClassModal(false)}>
-          <div className="modal-content" style={{ maxWidth: '480px', maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header" style={{ marginBottom: '0.6rem' }}>
-              <h3>{editingClassId ? 'Edit Class Details' : 'Schedule New Class'}</h3>
-              <button className="modal-close" onClick={() => setShowClassModal(false)}>
-                <X size={20} />
-              </button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(45, 21, 39, 0.4)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={() => setShowClassModal(false)}>
+          <div style={{ background: 'var(--pearl)', border: '1px solid var(--line)', borderRadius: '12px', padding: '2.2rem', width: '100%', maxWidth: '460px', boxShadow: 'var(--shadow-lift)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 500, margin: 0 }}>{editingClassId ? 'Edit Session' : 'Schedule Session'}</h3>
+              <button onClick={() => setShowClassModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-soft)' }}><X size={18} /></button>
             </div>
 
-            {formError && <div className="alert-banner danger" style={{ margin: '0 0 0.8rem 0' }}>{formError}</div>}
+            {formError && <div style={{ padding: '0.5rem', background: '#fee2e2', color: '#991b1b', borderRadius: '4px', fontSize: '0.78rem', marginBottom: '1rem' }}>{formError}</div>}
 
-            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.3rem' }}>
-              <form onSubmit={handleCreateClass} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label>Select Subject</label>
-                {subjects.length === 0 ? (
-                  <div style={{ fontSize: '0.85rem', color: 'var(--warning)', marginTop: '0.2rem' }}>
-                    No subjects configured yet. Please{' '}
-                    <span 
-                      style={{ textDecoration: 'underline', cursor: 'pointer', fontWeight: 600 }}
-                      onClick={() => {
-                        setShowClassModal(false);
-                        setShowSubjectModal(true);
-                      }}
-                    >
-                      create a subject
-                    </span>{' '}
-                    first.
-                  </div>
-                ) : (
-                  <select 
-                    className="form-select"
-                    value={selectedSubjectId}
-                    onChange={(e) => setSelectedSubjectId(e.target.value)}
-                  >
-                    {subjects.map(s => (
-                      <option key={s.id} value={s.id}>{s.code} - {s.name}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label>Start Date</label>
-                  <input 
-                    type="date" 
-                    className="form-input" 
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>End Date</label>
-                  <input 
-                    type="date" 
-                    className="form-input" 
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Recurrence Type</label>
-                <select 
-                  className="form-select"
-                  value={recurrenceType}
-                  onChange={(e) => setRecurrenceType(e.target.value)}
-                >
-                  <option value="none">No Repeat</option>
-                  <option value="weekly">Every Week</option>
-                  <option value="biweekly">Every 2 Weeks</option>
-                  <option value="custom_days">Custom Days of Week</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
+            <form onSubmit={handleSaveClass} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.25rem' }}>SUBJECT</label>
+                <select value={selectedSubjectId} onChange={e => setSelectedSubjectId(e.target.value)} style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} required>
+                  {subjects.map(s => <option key={s.id} value={s.id}>{s.code} — {s.name}</option>)}
                 </select>
               </div>
 
-              {recurrenceType === 'custom_days' ? (
-                <div className="form-group">
-                  <label>Select Repeating Days</label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginTop: '0.4rem' }}>
-                    {DAYS_OF_WEEK.map(d => {
-                      const isSelected = recurrenceDays.includes(d.value);
-                      return (
-                        <label 
-                          key={d.value} 
-                          style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '0.3rem', 
-                            fontSize: '0.8rem', 
-                            background: isSelected ? 'var(--bg-app-hover)' : 'transparent',
-                            padding: '0.3rem 0.6rem',
-                            borderRadius: 'var(--radius-sm)',
-                            border: '1px solid var(--border-color)',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <input 
-                            type="checkbox" 
-                            checked={isSelected}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setRecurrenceDays(prev => [...prev, d.value]);
-                              } else {
-                                setRecurrenceDays(prev => prev.filter(dayVal => dayVal !== d.value));
-                              }
-                            }}
-                          />
-                          {d.label.slice(0, 3)}
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div className="form-group">
-                  <label>Primary Day of Week</label>
-                  <select 
-                    className="form-select"
-                    value={classDay}
-                    onChange={(e) => setClassDay(parseInt(e.target.value, 10))}
-                  >
-                    {DAYS_OF_WEEK.map(d => (
-                      <option key={d.value} value={d.value}>{d.label}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div>
+                <label style={{ fontSize: '0.72rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.25rem' }}>DAY</label>
+                <select value={classDay} onChange={e => setClassDay(parseInt(e.target.value))} style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }}>
+                  {DAYS_OF_WEEK.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                </select>
+              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label>Start Time</label>
-                  <input 
-                    type="time" 
-                    className="form-input" 
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    required
-                  />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.25rem' }}>START TIME</label>
+                  <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} required />
                 </div>
-                <div className="form-group">
-                  <label>End Time</label>
-                  <input 
-                    type="time" 
-                    className="form-input" 
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    required
-                  />
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.25rem' }}>END TIME</label>
+                  <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} required />
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Room / Location (Optional)</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="e.g. Lecture Hall B, Zoom Link"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                />
+              <div>
+                <label style={{ fontSize: '0.72rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.25rem' }}>LOCATION / ROOM</label>
+                <input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Dome 3, Hall B" style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} />
               </div>
 
-                <button 
-                  type="submit" 
-                  className="btn-primary" 
-                  disabled={isSubmittingClass}
-                  style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem', opacity: isSubmittingClass ? 0.7 : 1 }}
-                >
-                  {isSubmittingClass ? 'Saving Class...' : (editingClassId ? 'Save Changes ✦' : 'Add Class ✦')}
-                </button>
-              </form>
-            </div>
+              <button type="submit" disabled={isSubmittingClass} style={{ padding: '0.75rem', background: 'var(--plum)', color: 'var(--cream)', border: 'none', borderRadius: '9999px', fontWeight: 700, cursor: 'pointer', marginTop: '0.3rem' }}>
+                {isSubmittingClass ? 'Saving...' : 'Save Session'}
+              </button>
+            </form>
           </div>
         </div>
       )}
 
-      {/* MODAL 2: MANAGE SUBJECTS FORM */}
+      {/* SUBJECT MODAL */}
       {showSubjectModal && (
-        <div className="modal-overlay" onClick={() => { setShowSubjectModal(false); cancelEditSubject(); }}>
-          <div className="modal-content" style={{ maxWidth: '480px', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Manage Subjects</h3>
-              <button className="modal-close" onClick={() => { setShowSubjectModal(false); cancelEditSubject(); }}>
-                <X size={20} />
-              </button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(45, 21, 39, 0.4)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={() => setShowSubjectModal(false)}>
+          <div style={{ background: 'var(--pearl)', border: '1px solid var(--line)', borderRadius: '12px', padding: '2.2rem', width: '100%', maxWidth: '460px', boxShadow: 'var(--shadow-lift)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 500, margin: 0 }}>Add Course Subject</h3>
+              <button onClick={() => setShowSubjectModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-soft)' }}><X size={18} /></button>
             </div>
 
-            {formError && <div className="alert-banner danger" style={{ marginBottom: '0.8rem' }}>{formError}</div>}
-
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.2rem', paddingRight: '0.2rem' }}>
-              
-              {/* Existing Subjects Section */}
+            <form onSubmit={handleAddSubject} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Existing Courses</h4>
-                {subjects.length === 0 ? (
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '0.4rem', fontStyle: 'italic' }}>
-                    No subjects registered yet.
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {subjects.map(s => {
-                      const isEditing = editingSubjectId === s.id;
-                      if (isEditing) {
-                        return (
-                          <form key={s.id} onSubmit={(e) => handleUpdateSubject(e, s.id)} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', background: 'var(--bg-app)', padding: '0.8rem', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--primary-glow)' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.4rem' }}>
-                              <div className="form-group" style={{ margin: 0 }}>
-                                <input 
-                                  type="text" 
-                                  className="form-input" 
-                                  style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem' }} 
-                                  placeholder="MATH301"
-                                  value={editCode}
-                                  onChange={(e) => setEditCode(e.target.value)}
-                                  required
-                                />
-                              </div>
-                              <div className="form-group" style={{ margin: 0 }}>
-                                <input 
-                                  type="text" 
-                                  className="form-input" 
-                                  style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem' }} 
-                                  placeholder="Calculus"
-                                  value={editName}
-                                  onChange={(e) => setEditName(e.target.value)}
-                                  required
-                                />
-                              </div>
-                            </div>
-                            
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem', flexWrap: 'wrap' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem' }}>
-                                <span>Target:</span>
-                                <input 
-                                  type="number" 
-                                  min="0"
-                                  max="100"
-                                  className="form-input" 
-                                  style={{ width: '48px', padding: '0.2rem 0.4rem', fontSize: '0.75rem', textAlign: 'center' }} 
-                                  value={editTargetAttendance}
-                                  onChange={(e) => setEditTargetAttendance(parseInt(e.target.value, 10))}
-                                  required
-                                />
-                                <span>%</span>
-                              </div>
-
-                              <div className="color-picker-grid" style={{ gridTemplateColumns: 'repeat(6, 16px)', gap: '0.2rem' }}>
-                                {PRESETS_COLORS.map(c => (
-                                  <div 
-                                    key={c} 
-                                    className={`color-option ${editColor === c ? 'selected' : ''}`}
-                                    style={{ background: c, height: '14px', width: '14px' }}
-                                    onClick={() => setEditColor(c)}
-                                  />
-                                ))}
-                              </div>
-
-                              <div style={{ display: 'flex', gap: '0.3rem' }}>
-                                <button type="submit" className="btn-primary" style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', minWidth: 'auto', borderRadius: 'var(--radius-sm) !important' }} title="Save Changes">
-                                  <Check size={12} />
-                                </button>
-                                <button type="button" className="btn-secondary" style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', minWidth: 'auto', borderRadius: 'var(--radius-sm) !important' }} onClick={cancelEditSubject} title="Cancel">
-                                  <X size={12} />
-                                </button>
-                              </div>
-                            </div>
-                          </form>
-                        );
-                      }
-
-                      return (
-                        <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: 'var(--bg-app)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50% !important', background: s.color, flexShrink: 0 }} />
-                            <span style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--text-primary)' }}>[{s.code}]</span>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>{s.name}</span>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', flexShrink: 0 }}>({s.target_attendance}%)</span>
-                          </div>
-
-                          <div style={{ display: 'flex', gap: '0.3rem' }}>
-                            <button type="button" className="btn-secondary" style={{ padding: '0.25rem 0.4rem', borderRadius: 'var(--radius-sm) !important', minWidth: 'auto' }} onClick={() => startEditSubject(s)} title="Edit Subject">
-                              <Edit2 size={12} style={{ color: 'var(--text-secondary)' }} />
-                            </button>
-                            <button type="button" className="btn-secondary" style={{ padding: '0.25rem 0.4rem', borderRadius: 'var(--radius-sm) !important', minWidth: 'auto' }} onClick={() => handleDeleteSubject(s.id)} title="Delete Subject">
-                              <Trash2 size={12} style={{ color: 'var(--primary)' }} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                <label style={{ fontSize: '0.72rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.25rem' }}>COURSE CODE</label>
+                <input type="text" value={subjectCode} onChange={e => setSubjectCode(e.target.value)} placeholder="e.g. AST-204" style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} required />
               </div>
 
-              {/* Create Subject Section */}
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.2rem', marginTop: '0.4rem' }}>
-                <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.8rem' }}>Add New Subject</h4>
-                
-                <form onSubmit={handleCreateSubject} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.6rem' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label style={{ fontSize: '0.75rem' }}>Course Code</label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        placeholder="e.g. MATH301"
-                        value={subjectCode}
-                        onChange={(e) => setSubjectCode(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label style={{ fontSize: '0.75rem' }}>Course Name</label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        placeholder="e.g. Calculus"
-                        value={subjectName}
-                        onChange={(e) => setSubjectName(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.25rem' }}>COURSE TITLE</label>
+                <input type="text" value={subjectName} onChange={e => setSubjectName(e.target.value)} placeholder="e.g. Orbital Astronomy" style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} required />
+              </div>
 
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.75rem' }}>Target Attendance (%)</label>
-                    <input 
-                      type="number" 
-                      min="0" 
-                      max="100" 
-                      className="form-input" 
-                      value={targetAttendance}
-                      onChange={(e) => setTargetAttendance(parseInt(e.target.value, 10))}
-                      required
+              <div>
+                <label style={{ fontSize: '0.72rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.25rem' }}>TARGET ATTENDANCE (%)</label>
+                <input type="number" min="50" max="100" value={targetAttendance} onChange={e => setTargetAttendance(parseInt(e.target.value))} style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} required />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.72rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.25rem' }}>COLOR ACCENT</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {PRESETS_COLORS.map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setSelectedColor(c)}
+                      style={{
+                        width: '26px',
+                        height: '26px',
+                        borderRadius: '50%',
+                        background: c,
+                        border: selectedColor === c ? '2px solid var(--plum)' : '1px solid var(--line)',
+                        cursor: 'pointer'
+                      }}
                     />
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.75rem' }}>Card Color Highlight</label>
-                    <div className="color-picker-grid" style={{ marginTop: '0.2rem' }}>
-                      {PRESETS_COLORS.map(color => (
-                        <div 
-                          key={color} 
-                          className={`color-option ${selectedColor === color ? 'selected' : ''}`}
-                          style={{ background: color }}
-                          onClick={() => setSelectedColor(color)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <button 
-                    type="submit" 
-                    className="btn-primary" 
-                    disabled={isSubmittingSubject}
-                    style={{ width: '100%', justifyContent: 'center', marginTop: '0.4rem', padding: '0.5rem', opacity: isSubmittingSubject ? 0.7 : 1 }}
-                  >
-                    {isSubmittingSubject ? 'Saving Subject...' : 'Create Subject'}
-                  </button>
-                </form>
+                  ))}
+                </div>
               </div>
 
-            </div>
+              <button type="submit" style={{ padding: '0.75rem', background: 'var(--plum)', color: 'var(--cream)', border: 'none', borderRadius: '9999px', fontWeight: 700, cursor: 'pointer', marginTop: '0.3rem' }}>
+                Create Course Subject
+              </button>
+            </form>
           </div>
         </div>
       )}
 
-      {/* MODAL 2.5: MANAGE BREAKS FORM */}
+      {/* TERM BREAKS MODAL */}
       {showBreaksModal && (
-        <div className="modal-overlay" onClick={() => setShowBreaksModal(false)}>
-          <div className="modal-content" style={{ maxWidth: '520px', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Manage Breaks</h3>
-              <button className="modal-close" onClick={() => setShowBreaksModal(false)}>
-                <X size={20} />
-              </button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(45, 21, 39, 0.4)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={() => setShowBreaksModal(false)}>
+          <div style={{ background: 'var(--pearl)', border: '1px solid var(--line)', borderRadius: '12px', padding: '2.2rem', width: '100%', maxWidth: '480px', boxShadow: 'var(--shadow-lift)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 500, margin: 0 }}>Term Breaks & Recesses</h3>
+              <button onClick={() => setShowBreaksModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-soft)' }}><X size={18} /></button>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.2rem', paddingRight: '0.2rem' }}>
-              <div>
-                <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Active Vacation periods</h4>
-                {breaksLoading && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Updating vacation periods...</div>}
-                
-                {breaks.length === 0 ? (
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '0.5rem', fontStyle: 'italic', background: 'var(--bg-app)', borderRadius: 'var(--radius-md)' }}>
-                    No breaks registered. Timetable will repeat normally.
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {breaks.map(b => (
-                      <div 
-                        key={b.id} 
-                        style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'space-between', 
-                          padding: '0.6rem 0.8rem', 
-                          background: 'rgba(231, 76, 60, 0.05)', 
-                          borderRadius: 'var(--radius-md)', 
-                          border: '1px solid rgba(231, 76, 60, 0.2)' 
-                        }}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{b.name}</span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                            📅 {b.start_date} to {b.end_date}
-                          </span>
-                        </div>
-                        <button 
-                          type="button" 
-                          className="btn-secondary" 
-                          style={{ padding: '0.25rem 0.4rem', borderColor: 'rgba(231, 76, 60, 0.3)', minWidth: 'auto' }} 
-                          onClick={() => handleDeleteBreak(b.id)} 
-                          title="Delete break"
-                        >
-                          <Trash2 size={12} style={{ color: '#e74c3c' }} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', margin: '0 0 1rem 0' }}>
+              Add planned term holidays and recesses. Scheduled classes will be suspended during these intervals.
+            </p>
 
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.2rem' }}>
-                <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.8rem' }}>Add New Break Period</h4>
-                
-                <form onSubmit={handleCreateBreak} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.75rem' }}>Break Name (e.g. Winter Break)</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder="e.g. Christmas Vacation, Semester Break"
-                      value={breakName}
-                      onChange={(e) => setBreakName(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label style={{ fontSize: '0.75rem' }}>Start Date</label>
-                      <input 
-                        type="date" 
-                        className="form-input" 
-                        value={breakStart}
-                        onChange={(e) => setBreakStart(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label style={{ fontSize: '0.75rem' }}>End Date</label>
-                      <input 
-                        type="date" 
-                        className="form-input" 
-                        value={breakEnd}
-                        onChange={(e) => setBreakEnd(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <button 
-                    type="submit" 
-                    className="btn-primary" 
-                    style={{ width: '100%', justifyContent: 'center', marginTop: '0.4rem', padding: '0.5rem', background: '#ff4d6d', borderColor: '#ff4d6d' }}
-                    disabled={breaksLoading}
-                  >
-                    Add Break Period
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* MODAL 3: AI TIMETABLE IMPORT */}
-      {showImportModal && (
-        <div className="modal-overlay" onClick={() => { if (!importLoading) setShowImportModal(false); }}>
-          <div className="modal-content" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Sparkles size={18} style={{ color: 'var(--primary)' }} />
-                Import Timetable with AI
-              </h3>
-              <button className="modal-close" onClick={() => setShowImportModal(false)} disabled={importLoading}>
-                <X size={20} />
-              </button>
-            </div>
-
-            {!user?.hasGeminiKey ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '2rem 1rem', gap: '1.2rem' }}>
-                <Bot size={40} style={{ color: '#ff7899', marginLeft: 'auto', marginRight: 'auto' }} />
-                <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#2e1622', margin: 0 }}>Connect Your Gemini Key</h4>
-                <p style={{ fontSize: '0.8rem', color: '#8c707a', lineHeight: 1.5, margin: 0 }}>
-                  Campusly uses Gemini for its AI-powered timetable import. Connect your own Gemini API key in settings to analyze your timetable and extract classes automatically.
-                </p>
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setShowImportModal(false);
-                    window.dispatchEvent(new CustomEvent('open-profile-settings'));
-                  }}
-                  className="btn-primary"
-                  style={{ padding: '0.55rem 1.2rem', borderRadius: '20px', display: 'inline-flex', alignSelf: 'center' }}
-                >
-                  Setup Gemini API Key
-                </button>
-              </div>
-            ) : (
-              <>
-                {importError && <div className="alert-banner danger" style={{ marginBottom: '1rem' }}>{importError}</div>}
-
-                {importLoading ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1rem', gap: '1rem' }}>
-                    <div className="spinner" style={{ borderTopColor: 'var(--primary)' }}></div>
-                    <div style={{ textAlign: 'center' }}>
-                      <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Analyzing your timetable...</p>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>Gemini is reading the days, slots, and branch-specific courses. This may take up to a minute.</p>
-                    </div>
-                  </div>
-                ) : (
-                  <form onSubmit={handleAnalyzeTimetable} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'var(--bg-app)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-color)', lineHeight: '1.4' }}>
-                  💡 Upload an image (PNG, JPG) or PDF of your semester schedule. Describe your branch/major and semester, and the AI will extract the relevant lectures and labs!
-                </div>
-
-                <div className="form-group">
-                  <label>Academic Branch / Major</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder="e.g. Computer Science, BDA, Mechanical"
-                    value={importBranch}
-                    onChange={(e) => setImportBranch(e.target.value)}
-                    required
-                  />
-                  <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: '0.2rem', display: 'block' }}>
-                    Helps filter out other branches' subjects from shared schedules.
-                  </small>
-                </div>
-
-                <div className="form-group">
-                  <label>Semester</label>
-                  <select 
-                    className="form-select"
-                    value={importSemester}
-                    onChange={(e) => setImportSemester(e.target.value)}
-                    required
-                  >
-                    {[1,2,3,4,5,6,7,8].map(sem => (
-                      <option key={sem} value={sem.toString()}>Semester {sem}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Timetable Document (Image or PDF)</label>
-                  <div style={{ position: 'relative', border: '2px dashed var(--border-color)', borderRadius: 'var(--radius-md)', padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer', transition: 'border-color 0.2s', background: importFile ? 'rgba(139, 92, 246, 0.05)' : 'transparent' }}>
-                    <input 
-                      type="file" 
-                      accept="image/*,application/pdf"
-                      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
-                      onChange={handleFileChange}
-                      required
-                    />
-                    <Upload size={24} style={{ color: importFile ? 'var(--primary)' : 'var(--text-muted)' }} />
-                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {importFile ? importFile.name : 'Select schedule file'}
-                    </span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      PDF, PNG, JPG, or JPEG up to 10MB
-                    </span>
-                  </div>
-                </div>
-
-                <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '0.4rem', padding: '0.6rem' }}>
-                  Analyze Timetable ✦
-                </button>
-              </form>
-            )}
-          </>
-        )}
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 4: AI TIMETABLE REVIEW SCREEN */}
-      {showReviewScreen && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '850px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: '1.5rem' }}>
-            <div className="modal-header">
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Sparkles size={18} style={{ color: 'var(--primary)' }} />
-                Review Extracted Timetable
-              </h3>
-            </div>
-
-            {importError && <div className="alert-banner danger" style={{ marginBottom: '1rem' }}>{importError}</div>}
-
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', background: 'var(--bg-app)', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem', borderLeft: '3px solid var(--primary)' }}>
-              🎯 **AI detected these classes.** Review the details below. You can fix misspelled subjects, adjust times, remove rows, or add missing ones before saving.
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1.2rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', background: 'var(--bg-app)' }}>
-              {reviewClasses.length === 0 ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  No classes detected. Click "Add class slot" to create them manually.
+            {/* List of active breaks */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '160px', overflowY: 'auto', marginBottom: '1.2rem' }}>
+              {breaks.length === 0 ? (
+                <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--ink-faint)', fontSize: '0.8rem', border: '1px dashed var(--line)', borderRadius: '6px' }}>
+                  No term breaks logged.
                 </div>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                  <thead>
-                    <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
-                      <th style={{ padding: '0.6rem 0.8rem', width: '120px' }}>Day</th>
-                      <th style={{ padding: '0.6rem 0.8rem', width: '90px' }}>Start</th>
-                      <th style={{ padding: '0.6rem 0.8rem', width: '90px' }}>End</th>
-                      <th style={{ padding: '0.6rem 0.8rem' }}>Subject Name</th>
-                      <th style={{ padding: '0.6rem 0.8rem', width: '100px' }}>Code</th>
-                      <th style={{ padding: '0.6rem 0.8rem', width: '90px' }}>Type</th>
-                      <th style={{ padding: '0.6rem 0.8rem', width: '100px' }}>Room</th>
-                      <th style={{ padding: '0.6rem 0.8rem', width: '40px' }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reviewClasses.map((item, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                        <td style={{ padding: '0.4rem' }}>
-                          <select 
-                            className="form-select" 
-                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.78rem' }}
-                            value={item.day}
-                            onChange={(e) => handleEditReviewClass(idx, 'day', e.target.value)}
-                          >
-                            {DAYS_OF_WEEK.map(d => (
-                              <option key={d.label} value={d.label}>{d.label}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td style={{ padding: '0.4rem' }}>
-                          <input 
-                            type="time" 
-                            className="form-input" 
-                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.78rem' }}
-                            value={item.start_time}
-                            onChange={(e) => handleEditReviewClass(idx, 'start_time', e.target.value)}
-                          />
-                        </td>
-                        <td style={{ padding: '0.4rem' }}>
-                          <input 
-                            type="time" 
-                            className="form-input" 
-                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.78rem' }}
-                            value={item.end_time}
-                            onChange={(e) => handleEditReviewClass(idx, 'end_time', e.target.value)}
-                          />
-                        </td>
-                        <td style={{ padding: '0.4rem' }}>
-                          <input 
-                            type="text" 
-                            className="form-input" 
-                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.78rem' }}
-                            placeholder="e.g. Mathematics II"
-                            value={item.subject_name || ''}
-                            onChange={(e) => handleEditReviewClass(idx, 'subject_name', e.target.value)}
-                          />
-                        </td>
-                        <td style={{ padding: '0.4rem' }}>
-                          <input 
-                            type="text" 
-                            className="form-input" 
-                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.78rem' }}
-                            placeholder="e.g. MATH102"
-                            value={item.subject_code || ''}
-                            onChange={(e) => handleEditReviewClass(idx, 'subject_code', e.target.value)}
-                          />
-                        </td>
-                        <td style={{ padding: '0.4rem' }}>
-                          <select 
-                            className="form-select" 
-                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.78rem' }}
-                            value={item.class_type || 'lecture'}
-                            onChange={(e) => handleEditReviewClass(idx, 'class_type', e.target.value)}
-                          >
-                            <option value="lecture">Lecture</option>
-                            <option value="lab">Lab</option>
-                          </select>
-                        </td>
-                        <td style={{ padding: '0.4rem' }}>
-                          <input 
-                            type="text" 
-                            className="form-input" 
-                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.78rem' }}
-                            placeholder="e.g. LH-301"
-                            value={item.room || ''}
-                            onChange={(e) => handleEditReviewClass(idx, 'room', e.target.value)}
-                          />
-                        </td>
-                        <td style={{ padding: '0.4rem', textAlign: 'center' }}>
-                          <button 
-                            type="button" 
-                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}
-                            onClick={() => handleDeleteReviewClass(idx)}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                breaks.map(b => (
+                  <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.8rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff' }}>
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 650, color: 'var(--ink)' }}>{b.name}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--ink-faint)' }}>{new Date(b.start_date).toLocaleDateString()} – {new Date(b.end_date).toLocaleDateString()}</div>
+                    </div>
+                    <button type="button" onClick={() => handleDeleteBreak(b.id)} style={{ background: 'none', border: 'none', color: 'var(--ink-faint)', cursor: 'pointer' }}>
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))
               )}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <button 
-                type="button" 
-                className="btn-secondary" 
-                onClick={handleAddReviewClassRow}
-                style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
-              >
-                <Plus size={14} />
-                Add class slot
+            <form onSubmit={handleAddBreak} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', borderTop: '1px solid var(--line)', paddingTop: '1rem' }}>
+              <div>
+                <label style={{ fontSize: '0.7rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.2rem' }}>BREAK NAME</label>
+                <input type="text" value={breakName} onChange={e => setBreakName(e.target.value)} placeholder="e.g. Spring Recess" style={{ width: '100%', padding: '0.55rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff' }} required />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.7rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.2rem' }}>START DATE</label>
+                  <input type="date" value={breakStartDate} onChange={e => setBreakStartDate(e.target.value)} style={{ width: '100%', padding: '0.55rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff' }} required />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.7rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.2rem' }}>END DATE</label>
+                  <input type="date" value={breakEndDate} onChange={e => setBreakEndDate(e.target.value)} style={{ width: '100%', padding: '0.55rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff' }} required />
+                </div>
+              </div>
+
+              <button type="submit" disabled={breakSubmitting} style={{ padding: '0.7rem', background: 'var(--plum)', color: 'var(--cream)', border: 'none', borderRadius: '9999px', fontWeight: 700, cursor: 'pointer', marginTop: '0.3rem' }}>
+                {breakSubmitting ? 'Saving...' : 'Add Term Break'}
               </button>
-              
-              <div style={{ display: 'flex', gap: '0.6rem' }}>
-                <button 
-                  type="button" 
-                  className="btn-secondary" 
-                  onClick={() => setShowReviewScreen(false)}
-                  disabled={importLoading}
-                >
-                  Cancel
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* AI TIMETABLE IMPORT MODAL */}
+      {showImportModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(45, 21, 39, 0.4)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={() => setShowImportModal(false)}>
+          <div style={{ background: 'var(--pearl)', border: '1px solid var(--line)', borderRadius: '12px', padding: '2.2rem', width: '100%', maxWidth: '520px', boxShadow: 'var(--shadow-lift)', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Sparkles size={16} style={{ color: 'var(--petal)' }} />
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 500, margin: 0 }}>Import Timetable with AI</h3>
+              </div>
+              <button onClick={() => setShowImportModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-soft)' }}><X size={18} /></button>
+            </div>
+
+            <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', margin: '0 0 1rem 0' }}>
+              Upload your official timetable image or PDF. The AI vision model will parse days, slots, and subject codes automatically.
+            </p>
+
+            {importError && (
+              <div style={{ padding: '0.5rem', background: '#fee2e2', color: '#991b1b', borderRadius: '4px', fontSize: '0.78rem', marginBottom: '1rem' }}>
+                {importError}
+              </div>
+            )}
+
+            {extractedClasses.length === 0 ? (
+              <form onSubmit={handleExtractTimetable} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.7rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.2rem' }}>TIMETABLE FILE (IMAGE / PDF)</label>
+                  <input 
+                    type="file" 
+                    accept="image/*,.pdf" 
+                    onChange={e => setImportFile(e.target.files?.[0] || null)} 
+                    style={{ width: '100%', padding: '0.55rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff' }}
+                    required 
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.7rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.2rem' }}>BRANCH (OPTIONAL)</label>
+                    <input type="text" value={branch} onChange={e => setBranch(e.target.value)} placeholder="e.g. CSE / CS" style={{ width: '100%', padding: '0.55rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.7rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.2rem' }}>SEMESTER (OPTIONAL)</label>
+                    <input type="text" value={semester} onChange={e => setSemester(e.target.value)} placeholder="e.g. 6 / VI" style={{ width: '100%', padding: '0.55rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff' }} />
+                  </div>
+                </div>
+
+                <button type="submit" disabled={isExtracting} style={{ padding: '0.75rem', background: 'var(--plum)', color: 'var(--cream)', border: 'none', borderRadius: '9999px', fontWeight: 700, cursor: 'pointer', marginTop: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                  <Sparkles size={14} style={{ color: 'var(--petal)' }} />
+                  <span>{isExtracting ? 'Analyzing Document with AI...' : 'Scan & Extract Schedule'}</span>
                 </button>
-                <button 
-                  type="button" 
-                  className="btn-primary" 
-                  onClick={handleConfirmImport}
-                  disabled={importLoading}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                >
-                  {importLoading ? 'Saving...' : 'Confirm & Save Schedule'}
+              </form>
+            ) : (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--ink)' }}>
+                    Extracted {extractedClasses.length} class slots:
+                  </span>
+                  <button type="button" onClick={() => setExtractedClasses([])} style={{ fontSize: '0.72rem', color: 'var(--ink-faint)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                    Scan Again
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '200px', overflowY: 'auto', marginBottom: '1.2rem' }}>
+                  {extractedClasses.map((item, idx) => (
+                    <div key={idx} style={{ padding: '0.5rem 0.7rem', border: '1px solid var(--line)', borderRadius: '4px', background: '#ffffff', fontSize: '0.78rem', display: 'flex', justifyContent: 'space-between' }}>
+                      <div>
+                        <strong>{item.day}</strong>: {item.subject_name || item.subject_code}
+                      </div>
+                      <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)' }}>
+                        {item.start_time}–{item.end_time}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button type="button" onClick={handleSaveImportedClasses} style={{ width: '100%', padding: '0.75rem', background: 'var(--plum)', color: 'var(--cream)', border: 'none', borderRadius: '9999px', fontWeight: 700, cursor: 'pointer' }}>
+                  Save All Extracted Classes to Timetable
                 </button>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}

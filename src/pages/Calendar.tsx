@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth, API_BASE_URL } from '../context/AuthContext';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { formatLocalDate } from '../utils/dateUtils';
 
 interface Assignment {
@@ -489,20 +489,30 @@ export const CalendarView: React.FC = () => {
   const monthName = currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div className="animate-page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1240px', margin: '0 auto', paddingBottom: '3rem' }}>
       
-      {/* Month Navigator Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface)', padding: '1rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', boxShadow: 'var(--card-shadow)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <CalendarIcon size={20} style={{ color: 'var(--primary)' }} />
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{monthName}</h2>
+      {/* 2095 Month Navigator Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--pearl)', padding: '1.2rem 1.8rem', borderRadius: '24px', border: '1px solid var(--line)', boxShadow: 'var(--shadow-soft)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+          <span className="sci-fi-tag">[ TERM CALENDAR ]</span>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.45rem', fontWeight: 600, color: 'var(--ink)', margin: 0 }}>{monthName}</h2>
         </div>
         
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
-          <button className="btn-secondary" style={{ padding: '0.4rem 0.8rem' }} onClick={handlePrevMonth}>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button 
+            type="button"
+            className="interactive-pill-btn" 
+            style={{ padding: '0.45rem 0.9rem', background: 'var(--cream)', border: '1px solid var(--line)', color: 'var(--ink)' }} 
+            onClick={handlePrevMonth}
+          >
             <ChevronLeft size={16} />
           </button>
-          <button className="btn-secondary" style={{ padding: '0.4rem 0.8rem' }} onClick={handleNextMonth}>
+          <button 
+            type="button"
+            className="interactive-pill-btn" 
+            style={{ padding: '0.45rem 0.9rem', background: 'var(--cream)', border: '1px solid var(--line)', color: 'var(--ink)' }} 
+            onClick={handleNextMonth}
+          >
             <ChevronRight size={16} />
           </button>
         </div>

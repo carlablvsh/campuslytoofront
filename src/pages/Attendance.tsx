@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth, API_BASE_URL } from '../context/AuthContext';
-import { AlertTriangle, Calendar, BookOpen } from 'lucide-react';
+import { ChevronDown, ChevronUp, Settings } from 'lucide-react';
 import { formatLocalDate } from '../utils/dateUtils';
 
 interface AttendanceStat {
@@ -25,25 +25,30 @@ export const Attendance: React.FC = () => {
   const [stats, setStats] = useState<AttendanceStat[]>([]);
   const [todaySubjectIds, setTodaySubjectIds] = useState<Set<string>>(new Set());
   const [todaySubjectTimes, setTodaySubjectTimes] = useState<Record<string, { startTime: string; timeRange: string }>>({});
+  
+  // DEFAULT PRIMARY VIEW IS TODAY'S CLASSES
   const [filterMode, setFilterMode] = useState<'today' | 'all'>('today');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Past Date Logging States
-  const [logPastSubjectId, setLogPastSubjectId] = useState<string>('');
-  const [logPastDate, setLogPastDate] = useState<string>(formatLocalDate(new Date()));
-  const [logPastStatus, setLogPastStatus] = useState<'present' | 'absent' | 'cancelled'>('present');
-  const [logPastLoading, setLogPastLoading] = useState<boolean>(false);
+
+  // User-configurable Attendance Threshold (Default: 75%)
+  const [globalThreshold, setGlobalThreshold] = useState<number>(() => {
+    const saved = localStorage.getItem('campusly_attendance_threshold');
+    return saved ? parseInt(saved, 10) : 75;
+  });
+  const [showThresholdSetting, setShowThresholdSetting] = useState<boolean>(false);
+  const [tempThreshold, setTempThreshold] = useState<number>(globalThreshold);
 
   // Simulator states stored per subject by subject_id
   const [simulators, setSimulators] = useState<Record<string, { value: number; mode: 'miss' | 'attend' }>>({});
+  const [expandedSimulators, setExpandedSimulators] = useState<Record<string, boolean>>({});
 
-  // Auto-sync selected subject for past logs once stats load
-  useEffect(() => {
-    if (stats.length > 0 && !logPastSubjectId) {
-      setLogPastSubjectId(stats[0].id);
-    }
-  }, [stats, logPastSubjectId]);
+  const saveThreshold = (newVal: number) => {
+    const val = Math.min(100, Math.max(50, newVal));
+    setGlobalThreshold(val);
+    localStorage.setItem('campusly_attendance_threshold', val.toString());
+    setShowThresholdSetting(false);
+  };
 
   const fetchStats = async () => {
     try {
@@ -84,21 +89,9 @@ export const Attendance: React.FC = () => {
         setTodaySubjectIds(subjectIds);
         setTodaySubjectTimes(timesMap);
       }
-      
-      // Initialize simulator defaults for subjects that don't have them yet
-      setSimulators(prev => {
-        const next = { ...prev };
-        data.forEach(s => {
-          if (!next[s.id]) {
-            next[s.id] = { value: 1, mode: s.status === 'safe' ? 'miss' : 'attend' };
-          }
-        });
-        return next;
-      });
-
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Error fetching stats.');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -110,47 +103,9 @@ export const Attendance: React.FC = () => {
     }
   }, [token]);
 
-  // Log attendance record for custom date
-  const handleLogPastAttendance = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!logPastSubjectId || !logPastDate || !logPastStatus) {
-      alert('Please fill out all fields to record past attendance.');
-      return;
-    }
+  const handleMarkAttendance = async (subjectId: string, status: 'present' | 'absent' | 'cancelled') => {
     try {
-      setLogPastLoading(true);
-      const res = await fetch(`${API_BASE_URL}/academic/attendance`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          subject_id: logPastSubjectId,
-          date: logPastDate,
-          status: logPastStatus
-        })
-      });
-
-      if (res.ok) {
-        fetchStats();
-        alert('Historical attendance log saved successfully!');
-      } else {
-        const errorData = await res.json();
-        alert(errorData.error || 'Failed to record attendance');
-      }
-    } catch (err) {
-      console.error('Error logging past attendance:', err);
-    } finally {
-      setLogPastLoading(false);
-    }
-  };
-
-  // Log attendance record today
-  const handleLogAttendance = async (subjectId: string, status: 'present' | 'absent' | 'cancelled') => {
-    const today = formatLocalDate(new Date());
-    try {
-      const res = await fetch(`${API_BASE_URL}/academic/attendance`, {
+      const res = await fetch(`${API_BASE_URL}/academic/attendance/log`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -158,409 +113,444 @@ export const Attendance: React.FC = () => {
         },
         body: JSON.stringify({
           subject_id: subjectId,
-          date: today,
+          date: formatLocalDate(new Date()),
           status
         })
       });
 
-      if (res.ok) {
-        fetchStats();
-      } else {
-        const errorData = await res.json();
-        alert(errorData.error || 'Failed to record attendance');
+      if (!res.ok) {
+        throw new Error('Failed to mark attendance.');
       }
-    } catch (err) {
-      console.error('Error logging attendance:', err);
+      fetchStats();
+    } catch (err: any) {
+      alert(err.message);
     }
   };
 
-  const handleSimChange = (subjectId: string, value: number) => {
+  const toggleSimExpand = (id: string) => {
+    setExpandedSimulators(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const updateSimulator = (subjectId: string, value: number, mode: 'miss' | 'attend') => {
     setSimulators(prev => ({
       ...prev,
-      [subjectId]: { ...prev[subjectId], value }
+      [subjectId]: { value, mode }
     }));
   };
 
-  const handleSimModeChange = (subjectId: string, mode: 'miss' | 'attend') => {
-    setSimulators(prev => ({
-      ...prev,
-      [subjectId]: { ...prev[subjectId], mode, value: 1 }
-    }));
-  };
-
-  const getSimulatedPercentage = (subject: AttendanceStat, simValue: number, simMode: 'miss' | 'attend') => {
-    const p = subject.presentCount;
-    const active = subject.totalActive;
-    if (simMode === 'miss') {
-      const newTotal = active + simValue;
-      return newTotal > 0 ? parseFloat(((p / newTotal) * 100).toFixed(1)) : 100.0;
+  const getSimulatedPercentage = (subject: AttendanceStat, count: number, mode: 'miss' | 'attend') => {
+    const present = subject.presentCount || 0;
+    const total = subject.totalActive || (subject.presentCount + subject.absentCount) || 0;
+    
+    if (mode === 'miss') {
+      const newTotal = total + count;
+      return newTotal > 0 ? parseFloat(((present / newTotal) * 100).toFixed(1)) : 100.0;
     } else {
-      const newPresent = p + simValue;
-      const newTotal = active + simValue;
+      const newPresent = present + count;
+      const newTotal = total + count;
       return newTotal > 0 ? parseFloat(((newPresent / newTotal) * 100).toFixed(1)) : 100.0;
     }
   };
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <div style={{ color: 'var(--text-secondary)' }}>Calculating attendance logs...</div>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', color: 'var(--ink-soft)' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.15rem' }}>
+          Calculating attendance observatory... ✧
+        </div>
       </div>
     );
   }
 
-  const displayedStats = filterMode === 'today'
-    ? stats
-        .filter(s => todaySubjectIds.has(s.id))
-        .sort((a, b) => {
-          const timeA = todaySubjectTimes[a.id]?.startTime || '99:99';
-          const timeB = todaySubjectTimes[b.id]?.startTime || '99:99';
-          return timeA.localeCompare(timeB);
-        })
-    : stats;
+  const todayStats = stats
+    .filter(s => todaySubjectIds.has(s.id))
+    .sort((a, b) => {
+      const timeA = todaySubjectTimes[a.id]?.startTime || '99:99';
+      const timeB = todaySubjectTimes[b.id]?.startTime || '99:99';
+      return timeA.localeCompare(timeB);
+    });
+
+  const displayedStats = filterMode === 'today' ? todayStats : stats;
+
+  const totalClassesAttended = stats.reduce((acc, curr) => acc + curr.presentCount, 0);
+  const totalClassesConducted = stats.reduce((acc, curr) => acc + (curr.presentCount + curr.absentCount), 0);
+  const overallAvg = totalClassesConducted > 0 
+    ? Math.round((totalClassesAttended / totalClassesConducted) * 100)
+    : 100;
+
+  // Dynamic status evaluation based on user-configured threshold
+  const getHealthStatus = (current: number, target: number) => {
+    if (current > target) {
+      return { label: 'Above Threshold', color: 'var(--success-text)', indicator: '● Safe Reserve' };
+    }
+    if (current === target) {
+      return { label: 'At Threshold', color: 'var(--success-text)', indicator: '● Safe' };
+    }
+    return { label: 'Below Threshold', color: 'var(--danger)', indicator: '▲ Warning' };
+  };
+
+  const aggregateHealth = getHealthStatus(overallAvg, globalThreshold);
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-      {error && (
-        <div className="alert-banner danger">
-          <span>{error}</span>
-        </div>
-      )}
+    <div className="animate-page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', maxWidth: '1240px', margin: '0 auto', paddingBottom: '3.5rem' }}>
+      
+      {/* 1. OPEN CANVAS EDITORIAL HEADER */}
+      <div style={{ borderBottom: '1px solid var(--line)', paddingBottom: '2rem' }}>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '0.8rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <span className="sci-fi-tag">ATTENDANCE ENGINE</span>
+            
+            {/* Configurable Threshold Setting */}
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setTempThreshold(globalThreshold);
+                  setShowThresholdSetting(!showThresholdSetting);
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  fontSize: '0.72rem',
+                  fontFamily: 'var(--font-mono)',
+                  color: 'var(--ink-soft)',
+                  background: 'transparent',
+                  border: '1px solid var(--line)',
+                  borderRadius: '9999px',
+                  padding: '0.25rem 0.65rem',
+                  cursor: 'pointer'
+                }}
+                title="Configure institutional attendance requirement"
+              >
+                <Settings size={11} style={{ color: 'var(--petal)' }} />
+                <span>Req: {globalThreshold}%</span>
+              </button>
 
-      {/* Filter Toggle: Today's Classes vs All Subjects */}
-      {stats.length > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.8rem' }}>
-          <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--bg-surface)', padding: '0.3rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              {/* Threshold Popover */}
+              {showThresholdSetting && (
+                <div style={{
+                  position: 'absolute',
+                  top: '115%',
+                  left: 0,
+                  zIndex: 50,
+                  background: 'var(--pearl)',
+                  border: '1px solid var(--line)',
+                  borderRadius: '8px',
+                  padding: '1.2rem',
+                  boxShadow: 'var(--shadow-lift)',
+                  width: '260px'
+                }}>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--ink)', marginBottom: '0.4rem' }}>
+                    Required Attendance Target
+                  </div>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', margin: '0 0 0.8rem 0', lineHeight: 1.4 }}>
+                    Set your institution or personal attendance requirement (default 75%).
+                  </p>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem' }}>
+                    <input 
+                      type="range"
+                      min="50"
+                      max="95"
+                      value={tempThreshold}
+                      onChange={(e) => setTempThreshold(parseInt(e.target.value, 10))}
+                      style={{ flex: 1 }}
+                    />
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 800, minWidth: '35px' }}>
+                      {tempThreshold}%
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowThresholdSetting(false)}
+                      style={{ padding: '0.3rem 0.6rem', fontSize: '0.72rem', background: 'transparent', border: '1px solid var(--line)', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => saveThreshold(tempThreshold)}
+                      style={{ padding: '0.3rem 0.75rem', fontSize: '0.72rem', background: 'var(--plum)', color: 'var(--cream)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 700 }}
+                    >
+                      Save Target
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Primary View: Today's Classes, Secondary: All Subjects */}
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
             <button
               type="button"
               onClick={() => setFilterMode('today')}
               style={{
-                padding: '0.45rem 1rem',
-                fontSize: '0.8rem',
+                padding: '0.4rem 0.9rem',
+                fontSize: '0.76rem',
+                fontFamily: 'var(--font-mono)',
                 fontWeight: 700,
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--line)',
+                borderRadius: '9999px',
                 cursor: 'pointer',
-                background: filterMode === 'today' ? 'var(--primary)' : 'transparent',
-                color: filterMode === 'today' ? '#ffffff' : 'var(--text-secondary)',
-                transition: 'var(--transition)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem'
+                background: filterMode === 'today' ? 'var(--plum)' : 'transparent',
+                color: filterMode === 'today' ? 'var(--cream)' : 'var(--ink-soft)',
+                transition: 'all 0.15s'
               }}
             >
-              <Calendar size={14} />
-              <span>Today's Classes</span>
-              <span style={{ fontSize: '0.7rem', opacity: 0.85, background: filterMode === 'today' ? 'rgba(0,0,0,0.2)' : 'var(--bg-app)', padding: '0.1rem 0.4rem', borderRadius: '10px' }}>
-                {stats.filter(s => todaySubjectIds.has(s.id)).length}
-              </span>
+              TODAY'S CLASSES ({todayStats.length})
             </button>
-
             <button
               type="button"
               onClick={() => setFilterMode('all')}
               style={{
-                padding: '0.45rem 1rem',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
+                padding: '0.4rem 0.9rem',
+                fontSize: '0.76rem',
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 600,
+                border: '1px solid var(--line)',
+                borderRadius: '9999px',
                 cursor: 'pointer',
-                background: filterMode === 'all' ? 'var(--primary)' : 'transparent',
-                color: filterMode === 'all' ? '#ffffff' : 'var(--text-secondary)',
-                transition: 'var(--transition)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem'
+                background: filterMode === 'all' ? 'var(--plum)' : 'transparent',
+                color: filterMode === 'all' ? 'var(--cream)' : 'var(--ink-soft)',
+                transition: 'all 0.15s'
               }}
             >
-              <BookOpen size={14} />
-              <span>All Subjects</span>
-              <span style={{ fontSize: '0.7rem', opacity: 0.85, background: filterMode === 'all' ? 'rgba(0,0,0,0.2)' : 'var(--bg-app)', padding: '0.1rem 0.4rem', borderRadius: '10px' }}>
-                {stats.length}
-              </span>
+              ALL SUBJECTS ({stats.length})
             </button>
+          </div>
+        </div>
+
+        <h1 style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 'clamp(2.1rem, 3.8vw, 3rem)',
+          fontWeight: 400,
+          lineHeight: 1.08,
+          letterSpacing: '-0.03em',
+          color: 'var(--ink)',
+          margin: 0
+        }}>
+          Small measures, <br />
+          <span style={{ fontStyle: 'italic', color: 'var(--petal)', fontWeight: 300 }}>kept gently</span>.
+        </h1>
+
+        {/* Dynamic Standing Display */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '2.5rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Aggregate Standing (Req: {globalThreshold}%)
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', marginTop: '0.2rem' }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 400, lineHeight: 1, color: 'var(--ink)' }}>
+                {overallAvg}%
+              </span>
+              <span style={{ fontSize: '0.82rem', color: aggregateHealth.color, fontWeight: 700 }}>
+                {aggregateHealth.indicator}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ width: '1px', height: '40px', background: 'var(--line)' }} />
+
+          <div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Logged Attendance
+            </div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 400, color: 'var(--ink)', marginTop: '0.2rem' }}>
+              {totalClassesAttended} <span style={{ fontSize: '0.9rem', color: 'var(--ink-faint)' }}>/ {totalClassesConducted} sessions</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {error && (
+        <div style={{ padding: '1rem', background: '#fee2e2', color: '#991b1b', borderRadius: '4px', fontSize: '0.85rem' }}>
+          {error}
+        </div>
+      )}
+
+      {/* 2. SUBJECT LIST: TODAY'S CLASSES BY DEFAULT */}
+      {displayedStats.length === 0 ? (
+        <div style={{ padding: '3.5rem 0', textAlign: 'center', color: 'var(--ink-soft)' }}>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem' }}>
+            {filterMode === 'today' ? 'No scheduled classes today.' : 'No enrolled subjects found.'}
+          </p>
+          <p style={{ fontSize: '0.85rem', color: 'var(--ink-faint)' }}>
+            {filterMode === 'today' ? 'Switch to "All Subjects" to view your full course roster or log past attendance.' : 'Add your courses in the Timetable section to begin logging attendance.'}
+          </p>
+        </div>
+      ) : (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.8rem', borderBottom: '1px solid var(--line)' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-faint)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              {filterMode === 'today' ? "Today's Schedule & Attendance" : 'Enrolled Course Breakdown'}
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-faint)' }}>
+              TARGET / CURRENT
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {displayedStats.map(subject => {
+              const target = subject.targetAttendance || globalThreshold;
+              const subjectHealth = getHealthStatus(subject.currentPercentage, target);
+              const isSafe = subject.currentPercentage >= target;
+              
+              const sim = simulators[subject.id] || { value: 1, mode: 'miss' };
+              const simPercentage = getSimulatedPercentage(subject, sim.value, sim.mode);
+              const isExpanded = expandedSimulators[subject.id];
+              const sessionTime = todaySubjectTimes[subject.id]?.timeRange;
+
+              return (
+                <div 
+                  key={subject.id}
+                  style={{
+                    borderBottom: '1px solid var(--line)',
+                    padding: '1.4rem 0',
+                    transition: 'background 0.2s'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.4rem' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', fontWeight: 700, color: subject.color || 'var(--petal)', width: '70px' }}>
+                        {subject.code}
+                      </span>
+                      <div>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', fontWeight: 500, color: 'var(--ink)', margin: 0 }}>
+                          {subject.name}
+                        </h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '0.74rem', color: 'var(--ink-faint)', marginTop: '0.15rem' }}>
+                          {sessionTime && <span style={{ fontWeight: 700, color: 'var(--ink)' }}>Today {sessionTime} ·</span>}
+                          <span>Target {target}%</span>
+                          <span>·</span>
+                          <span>{subject.presentCount} attended</span>
+                          <span>·</span>
+                          <span>{subject.absentCount} missed</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.8rem' }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.35rem', fontWeight: 700, color: subjectHealth.color }}>
+                          {subject.currentPercentage}%
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: subjectHealth.color, fontWeight: 650 }}>
+                          {isSafe 
+                            ? `+${subject.classesCanMiss || 0} safe absences` 
+                            : `Must attend next ${subject.classesToAttend || 1} sessions`}
+                        </div>
+                      </div>
+
+                      {/* Quick Action Logging Pills */}
+                      <div style={{ display: 'flex', gap: '0.35rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleMarkAttendance(subject.id, 'present')}
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            fontFamily: 'var(--font-mono)',
+                            background: 'transparent',
+                            color: 'var(--success-text)',
+                            border: '1px solid var(--line)',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          + PRESENT
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMarkAttendance(subject.id, 'absent')}
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            fontFamily: 'var(--font-mono)',
+                            background: 'transparent',
+                            color: 'var(--danger)',
+                            border: '1px solid var(--line)',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          + ABSENT
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleSimExpand(subject.id)}
+                          style={{
+                            padding: '0.35rem 0.55rem',
+                            background: 'transparent',
+                            color: 'var(--ink-faint)',
+                            border: '1px solid var(--line)',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}
+                          title="Simulate Future Classes"
+                        >
+                          {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Collapsible Simulation Slider */}
+                  {isExpanded && (
+                    <div style={{ marginTop: '1.2rem', paddingTop: '1rem', borderTop: '1px dashed var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
+                          If I {sim.mode === 'miss' ? 'miss' : 'attend'} next
+                        </span>
+                        <input 
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={sim.value}
+                          onChange={(e) => updateSimulator(subject.id, parseInt(e.target.value), sim.mode)}
+                          style={{ width: '100px' }}
+                        />
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 700 }}>
+                          {sim.value} {sim.value === 1 ? 'class' : 'classes'}
+                        </span>
+                        <div style={{ display: 'flex', gap: '0.3rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => updateSimulator(subject.id, sim.value, 'miss')}
+                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.68rem', fontFamily: 'var(--font-mono)', border: '1px solid var(--line)', borderRadius: '3px', background: sim.mode === 'miss' ? 'var(--petal)' : 'transparent', color: sim.mode === 'miss' ? '#ffffff' : 'var(--ink-soft)' }}
+                          >
+                            Miss
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateSimulator(subject.id, sim.value, 'attend')}
+                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.68rem', fontFamily: 'var(--font-mono)', border: '1px solid var(--line)', borderRadius: '3px', background: sim.mode === 'attend' ? 'var(--petal)' : 'transparent', color: sim.mode === 'attend' ? '#ffffff' : 'var(--ink-soft)' }}
+                          >
+                            Attend
+                          </button>
+                        </div>
+                      </div>
+
+                      <div style={{ fontSize: '0.82rem', fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>
+                        Projected: <strong>{simPercentage}%</strong> ({simPercentage >= target ? 'Safe' : 'Below Target'})
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Main Content Area */}
-      {stats.length === 0 ? (
-        <div className="section-card" style={{ textAlign: 'center', padding: '4rem 1.5rem', color: 'var(--text-secondary)' }}>
-          <AlertTriangle size={48} style={{ color: 'var(--warning)', marginBottom: '1rem', opacity: 0.8 }} />
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>No Subjects Found</h3>
-          <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem', maxWidth: '400px', margin: '0 auto 1.5rem' }}>
-            Before tracking attendance logs, you need to add your subjects first on the **Timetable** page.
-          </p>
-        </div>
-      ) : filterMode === 'today' && displayedStats.length === 0 ? (
-        <div className="section-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--text-secondary)' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: '0.8rem' }}>🏖️</div>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-primary)' }}>No Classes Scheduled Today</h3>
-          <p style={{ fontSize: '0.85rem', marginBottom: '1.2rem', maxWidth: '420px', margin: '0 auto 1.2rem' }}>
-            You have no timetable lectures scheduled for today. Enjoy your break or switch to <strong>All Subjects</strong> to manage attendance across your entire semester.
-          </p>
-          <button 
-            type="button"
-            className="btn-secondary" 
-            onClick={() => setFilterMode('all')}
-            style={{ padding: '0.45rem 1rem', fontSize: '0.8rem' }}
-          >
-            View All Subjects
-          </button>
-        </div>
-      ) : (
-        <div className="attendance-grid">
-          {displayedStats.map(subject => {
-            const radius = 34;
-            const circumference = 2 * Math.PI * radius;
-            const strokeDashoffset = circumference - (subject.currentPercentage / 100) * circumference;
-            const isSafe = subject.currentPercentage >= subject.targetAttendance;
-            
-            // Get simulator inputs
-            const sim = simulators[subject.id] || { value: 1, mode: 'miss' };
-            const simPercentage = getSimulatedPercentage(subject, sim.value, sim.mode);
-            const isSimSafe = simPercentage >= subject.targetAttendance;
-
-            return (
-              <div 
-                key={subject.id} 
-                className="attendance-card" 
-                style={{ borderTop: `4px solid ${subject.color}` }}
-              >
-                
-                {/* Subject Info Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                      <span className="badge" style={{ background: subject.color, color: '#1a0b14' }}>{subject.code}</span>
-                      {filterMode === 'today' && todaySubjectTimes[subject.id] && (
-                        <span className="badge" style={{ background: 'var(--bg-app)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', fontSize: '0.7rem', fontWeight: 700 }}>
-                          {todaySubjectTimes[subject.id].timeRange}
-                        </span>
-                      )}
-                    </div>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: 750, marginTop: '0.3rem' }}>{subject.name}</h3>
-                  </div>
-                  
-                  <span 
-                    className="badge" 
-                    style={{ 
-                      background: isSafe ? 'var(--success-glow)' : 'var(--danger-glow)', 
-                      color: isSafe ? 'var(--success)' : 'var(--danger)',
-                      border: `1px solid ${isSafe ? 'var(--success)' : 'var(--danger)'}`
-                    }}
-                  >
-                    {isSafe ? 'SAFE' : 'DANGER'}
-                  </span>
-                </div>
-
-                {/* Progress Circle & Text Row */}
-                <div className="attendance-card-progress">
-                  <div className="progress-ring-container">
-                    <svg width="80" height="80">
-                      <circle
-                        stroke="rgba(0,0,0,0.06)"
-                        fill="transparent"
-                        strokeWidth="7"
-                        r={radius}
-                        cx="40"
-                        cy="40"
-                      />
-                      <circle
-                        className="progress-ring-circle"
-                        stroke={isSafe ? 'var(--success)' : 'var(--danger)'}
-                        fill="transparent"
-                        strokeWidth="7"
-                        strokeDasharray={circumference}
-                        strokeDashoffset={strokeDashoffset}
-                        r={radius}
-                        cx="40"
-                        cy="40"
-                      />
-                    </svg>
-                    <div className="progress-ring-text" style={{ color: isSafe ? 'var(--success)' : 'var(--danger)' }}>
-                      {subject.currentPercentage}%
-                    </div>
-                  </div>
-
-                  <div style={{ flex: 1, paddingLeft: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      Target threshold: <strong>{subject.targetAttendance}%</strong>
-                    </span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      {subject.totalActive === 0 ? (
-                        'No lectures recorded yet'
-                      ) : isSafe ? (
-                        <>
-                          You can miss <strong style={{ color: 'var(--success)' }}>{subject.classesCanMiss}</strong> class{subject.classesCanMiss !== 1 ? 'es' : ''} safely.
-                        </>
-                      ) : (
-                        <>
-                          Attend <strong style={{ color: 'var(--danger)' }}>{subject.classesToAttend}</strong> consecutive class{subject.classesToAttend !== 1 ? 'es' : ''} to reach target.
-                        </>
-                      )}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Numbers Grid */}
-                <div className="attendance-stat-box">
-                  <div>
-                    <div className="stat-num" style={{ color: 'var(--success)' }}>{subject.presentCount}</div>
-                    <div className="stat-lbl">Attended</div>
-                  </div>
-                  <div>
-                    <div className="stat-num" style={{ color: 'var(--danger)' }}>{subject.absentCount}</div>
-                    <div className="stat-lbl">Missed</div>
-                  </div>
-                  <div>
-                    <div className="stat-num" style={{ color: 'var(--warning)' }}>{subject.cancelledCount}</div>
-                    <div className="stat-lbl">Cancelled</div>
-                  </div>
-                </div>
-
-                {/* Quick Log Buttons */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>Quick Log Today's Attendance:</span>
-                  <div className="attendance-log-buttons">
-                    <button className="btn-log" onClick={() => handleLogAttendance(subject.id, 'present')}>
-                      Present
-                    </button>
-                    <button className="btn-log" onClick={() => handleLogAttendance(subject.id, 'absent')}>
-                      Absent
-                    </button>
-                    <button className="btn-log" onClick={() => handleLogAttendance(subject.id, 'cancelled')}>
-                      Cancelled
-                    </button>
-                  </div>
-                </div>
-
-                {/* Simulator Calculator Widget */}
-                <div className="attendance-simulator">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.75rem' }}>Attendance Simulator</span>
-                    <div style={{ display: 'flex', gap: '0.3rem' }}>
-                      <button 
-                        className="badge" 
-                        style={{ 
-                          background: sim.mode === 'miss' ? 'var(--primary)' : 'rgba(255,255,255,0.05)', 
-                          border: 'none', 
-                          cursor: 'pointer' 
-                        }}
-                        onClick={() => handleSimModeChange(subject.id, 'miss')}
-                      >
-                        If I Miss
-                      </button>
-                      <button 
-                        className="badge" 
-                        style={{ 
-                          background: sim.mode === 'attend' ? 'var(--primary)' : 'rgba(255,255,255,0.05)', 
-                          border: 'none', 
-                          cursor: 'pointer' 
-                        }}
-                        onClick={() => handleSimModeChange(subject.id, 'attend')}
-                      >
-                        If I Attend
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="simulator-slider-row">
-                    <input 
-                      type="range" 
-                      min="1" 
-                      max="20" 
-                      value={sim.value}
-                      onChange={(e) => handleSimChange(subject.id, parseInt(e.target.value, 10))}
-                      className="slider-input" 
-                    />
-                    <span style={{ fontWeight: 700, minWidth: '24px', textAlign: 'right' }}>{sim.value}</span>
-                  </div>
-
-                  <div className={`simulator-result-box ${isSimSafe ? 'status-safe' : 'status-danger'}`}>
-                    Simulated Attendance: <strong>{simPercentage}%</strong> ({isSimSafe ? 'Above Target' : 'Below Target'})
-                  </div>
-                </div>
-
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Relocated: Log Past Attendance Card */}
-      {stats.length > 0 && (
-        <div className="section-card" style={{ padding: '1.2rem 1.6rem', background: 'var(--bg-surface)' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '0.8rem', color: 'var(--text-primary)' }}>Log Past Attendance</h3>
-          <form onSubmit={handleLogPastAttendance} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div className="form-group" style={{ margin: 0, minWidth: '160px', flex: 1 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Course / Subject</label>
-              <select 
-                className="form-select"
-                value={logPastSubjectId}
-                onChange={(e) => setLogPastSubjectId(e.target.value)}
-                style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}
-              >
-                {stats.map(s => (
-                  <option key={s.id} value={s.id}>{s.code} - {s.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group" style={{ margin: 0, minWidth: '140px', flex: 0.8 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Select Date</label>
-              <input 
-                type="date"
-                className="form-input"
-                value={logPastDate}
-                onChange={(e) => setLogPastDate(e.target.value)}
-                style={{ padding: '0.45rem 0.75rem', fontSize: '0.8rem' }}
-                required
-              />
-            </div>
-
-            <div className="form-group" style={{ margin: 0, minWidth: '220px', flex: 1.2 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Attendance Status</label>
-              <div style={{ display: 'flex', gap: '0.3rem' }}>
-                {(['present', 'absent', 'cancelled'] as const).map(st => (
-                  <button
-                    key={st}
-                    type="button"
-                    className="badge"
-                    onClick={() => setLogPastStatus(st)}
-                    style={{
-                      flex: 1,
-                      padding: '0.5rem 0',
-                      textTransform: 'capitalize',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      background: logPastStatus === st 
-                        ? (st === 'present' ? 'var(--success)' : st === 'absent' ? 'var(--danger)' : 'var(--warning)') 
-                        : 'var(--bg-app)',
-                      color: logPastStatus === st ? '#ffffff' : 'var(--text-secondary)',
-                      border: '1px solid var(--border-color)',
-                      transition: 'var(--transition)',
-                      borderRadius: 'var(--radius-md)'
-                    }}
-                  >
-                    {st}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button 
-              type="submit" 
-              className="btn-primary" 
-              style={{ padding: '0.55rem 1.2rem', fontSize: '0.85rem', minWidth: '110px' }}
-              disabled={logPastLoading}
-            >
-              {logPastLoading ? 'Logging...' : 'Log Attendance'}
-            </button>
-          </form>
-        </div>
-      )}
     </div>
   );
 };

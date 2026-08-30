@@ -1005,7 +1005,7 @@ export const StudyRoom: React.FC = () => {
   }, []);
 
   return (
-    <div className="studyroom-container" style={{ backgroundImage: "url('/cozy_study_bg.jpg')" }}>
+    <div className="studyroom-container" style={{ backgroundImage: "url('/assets/study-nook-DITl-i_n.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}>
       
       {/* Dynamic workspace wrapper where cards reflow symmetrically */}
       <div className="studyroom-workspace">

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth, API_BASE_URL } from '../context/AuthContext';
-import { Plus, Trash2, Calendar, Clock, MapPin, X, BookOpen } from 'lucide-react';
+import { Plus, X, Check } from 'lucide-react';
 
 interface Subject {
   id: string;
@@ -40,8 +40,6 @@ export const Exams: React.FC = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Local study preparation checklist states
-  // Format: { [examId]: string[] (completed topic names) }
   const [studiedTopics, setStudiedTopics] = useState<Record<string, string[]>>({});
 
   const fetchData = async () => {
@@ -64,15 +62,9 @@ export const Exams: React.FC = () => {
       if (subData.length > 0) {
         setSelectedSubjectId(subData[0].id);
       }
-
-      // Load studied topics from local storage
-      const savedTopics = localStorage.getItem('campusly_studied_topics');
-      if (savedTopics) {
-        setStudiedTopics(JSON.parse(savedTopics));
-      }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Error fetching exams.');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -81,48 +73,41 @@ export const Exams: React.FC = () => {
   useEffect(() => {
     if (token) {
       fetchData();
+      const savedTopics = localStorage.getItem('campusly_studied_topics');
+      if (savedTopics) {
+        try {
+          setStudiedTopics(JSON.parse(savedTopics));
+        } catch (e) {}
+      }
     }
   }, [token]);
 
-  // Handle Exam deletion
   const handleDeleteExam = async (id: string) => {
-    if (!window.confirm('Delete this scheduled exam?')) return;
+    if (!window.confirm('Delete this scheduled exam permanently?')) return;
     try {
       const res = await fetch(`${API_BASE_URL}/academic/exams/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
       if (res.ok) {
-        setExams(prev => prev.filter(e => e.id !== id));
-        
-        // Clean up stored studied topics
-        setStudiedTopics(prev => {
-          const next = { ...prev };
-          delete next[id];
-          localStorage.setItem('campusly_studied_topics', JSON.stringify(next));
-          return next;
-        });
+        setExams(prev => prev.filter(item => item.id !== id));
       }
     } catch (err) {
       console.error(err);
     }
   };
 
-  // Submit form
   const handleCreateExam = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError(null);
-
-    if (!title.trim() || !selectedSubjectId || !examDate || !startTime) {
-      setFormError('Title, subject, date, and time are required.');
+    if (!title.trim() || !selectedSubjectId || !examDate) {
+      setFormError('Please enter a title, select a subject, and specify an exam date.');
       return;
     }
 
-    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setFormError(null);
 
     try {
-      setIsSubmitting(true);
       const res = await fetch(`${API_BASE_URL}/academic/exams`, {
         method: 'POST',
         headers: {
@@ -149,7 +134,6 @@ export const Exams: React.FC = () => {
         return [...prev, data];
       });
       
-      // Clear forms
       setTitle('');
       setExamDate('');
       setLocation('');
@@ -162,7 +146,6 @@ export const Exams: React.FC = () => {
     }
   };
 
-  // Toggle syllabus topic checkbox
   const handleToggleTopic = (examId: string, topic: string) => {
     setStudiedTopics(prev => {
       const current = prev[examId] || [];
@@ -176,7 +159,6 @@ export const Exams: React.FC = () => {
     });
   };
 
-  // Helper: parse comma or newline separated syllabus string into array
   const parseSyllabus = (syllabusText: string): string[] => {
     if (!syllabusText.trim()) return [];
     return syllabusText
@@ -185,7 +167,6 @@ export const Exams: React.FC = () => {
       .filter(s => s.length > 0);
   };
 
-  // Helper: calculate countdown days
   const getDaysLeft = (examDateStr: string) => {
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -203,189 +184,175 @@ export const Exams: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <div style={{ color: 'var(--text-secondary)' }}>Loading exam timetable...</div>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', color: 'var(--ink-soft)' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.25rem' }}>
+          Loading evaluation schedule... ✧
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+    <div className="animate-page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '3.5rem', maxWidth: '1240px', margin: '0 auto', paddingBottom: '4rem' }}>
       
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-        <button className="btn-primary" onClick={() => setShowModal(true)}>
-          <Plus size={18} />
-          Add Exam
-        </button>
+      {/* 1. OPEN CANVAS EDITORIAL HEADER */}
+      <div style={{ borderBottom: '1px solid var(--line)', paddingBottom: '2.5rem' }}>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <span className="sci-fi-tag">EVALUATION PROTOCOLS</span>
+          
+          <button 
+            type="button"
+            onClick={() => setShowModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              padding: '0.55rem 1.3rem',
+              borderRadius: '9999px',
+              border: 'none',
+              background: 'var(--plum)',
+              color: 'var(--cream)',
+              fontSize: '0.84rem',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            <Plus size={14} style={{ color: 'var(--petal)' }} />
+            <span>Schedule Exam</span>
+          </button>
+        </div>
+
+        <h1 style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 'clamp(2.1rem, 3.8vw, 3rem)',
+          fontWeight: 400,
+          lineHeight: 1.08,
+          letterSpacing: '-0.03em',
+          color: 'var(--ink)',
+          margin: 0
+        }}>
+          Exams & Evaluations, <br />
+          <span style={{ fontStyle: 'italic', color: 'var(--petal)', fontWeight: 300 }}>arranged ahead</span>.
+        </h1>
+
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '2.5rem', marginTop: '2rem' }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Scheduled Exams
+            </div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 400, color: 'var(--ink)', marginTop: '0.2rem' }}>
+              {exams.length} <span style={{ fontSize: '1rem', color: 'var(--ink-faint)' }}>this term</span>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {error && (
-        <div className="alert-banner danger">
-          <span>{error}</span>
+        <div style={{ padding: '1rem', background: '#fee2e2', color: '#991b1b', borderRadius: '4px', fontSize: '0.85rem' }}>
+          {error}
         </div>
       )}
 
+      {/* 2. OPEN EXAMS LEDGER */}
       {exams.length === 0 ? (
-        <div className="section-card" style={{ textAlign: 'center', padding: '4rem 1.5rem', color: 'var(--text-secondary)' }}>
-          <Calendar size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>No Exams Scheduled</h3>
-          <p style={{ fontSize: '0.9rem', maxWidth: '400px', margin: '0 auto' }}>
-            Looking good! No exams have been added to your schedule yet. Click the "Add Exam" button to log one.
-          </p>
+        <div style={{ padding: '4rem 0', textAlign: 'center', color: 'var(--ink-faint)', fontStyle: 'italic', fontSize: '1rem' }}>
+          No exams scheduled for this term yet.
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           {exams.map(exam => {
             const syllabusItems = parseSyllabus(exam.syllabus);
             const completed = studiedTopics[exam.id] || [];
-            
-            // Clean up completed topics that might no longer exist if syllabus changed
             const activeCompleted = completed.filter(t => syllabusItems.includes(t));
-            const progressPct = syllabusItems.length > 0 
-              ? Math.round((activeCompleted.length / syllabusItems.length) * 100)
-              : 0;
-
+            const progressPct = syllabusItems.length > 0 ? Math.round((activeCompleted.length / syllabusItems.length) * 100) : 0;
             const daysLeftText = getDaysLeft(exam.date);
-            const isPassed = daysLeftText === 'Passed';
-            const isSoon = !isPassed && (daysLeftText === 'Today!' || daysLeftText === 'Tomorrow' || parseInt(daysLeftText) <= 3);
 
             return (
               <div 
-                key={exam.id} 
-                className="section-card"
-                style={{ 
-                  borderLeft: `4px solid ${exam.subject_color}`,
-                  background: isPassed ? 'rgba(0,0,0,0.1)' : 'var(--bg-surface)'
+                key={exam.id}
+                style={{
+                  borderBottom: '1px solid var(--line)',
+                  padding: '2rem 0',
+                  display: 'grid',
+                  gridTemplateColumns: '1.2fr 0.8fr',
+                  gap: '3rem',
+                  alignItems: 'flex-start'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-                  
-                  {/* Subject and exam title */}
-                  <div>
-                    <span className="badge" style={{ background: exam.subject_color, color: '#1a0b14', marginRight: '0.5rem' }}>{exam.subject_code}</span>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{exam.subject_name}</span>
-                    <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginTop: '0.4rem', textDecoration: isPassed ? 'line-through' : 'none' }}>
-                      {exam.title}
-                    </h3>
-                  </div>
-
-                  {/* Countdown Badge */}
+                <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                    <span 
-                      className="badge" 
-                      style={{ 
-                        padding: '0.4rem 0.8rem', 
-                        fontSize: '0.85rem',
-                        background: isPassed 
-                          ? 'var(--text-muted)' 
-                          : isSoon 
-                            ? 'var(--danger-glow)' 
-                            : 'var(--primary-glow)',
-                        color: isPassed 
-                          ? 'white' 
-                          : isSoon 
-                            ? 'var(--danger)' 
-                            : 'var(--primary)',
-                        border: `1px solid ${isPassed ? 'var(--text-muted)' : isSoon ? 'var(--danger)' : 'var(--primary)'}`
-                      }}
-                    >
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', fontWeight: 700, color: exam.subject_color || 'var(--petal)' }}>
+                      {exam.subject_code}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--petal)', fontWeight: 700 }}>
                       {daysLeftText}
                     </span>
-
-                    <button 
-                      style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', hover: { color: 'var(--danger)' } } as any}
-                      onClick={() => handleDeleteExam(exam.id)}
-                      title="Delete exam"
-                    >
-                      <Trash2 size={16} />
-                    </button>
                   </div>
 
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 500, color: 'var(--ink)', margin: '0.4rem 0 0.8rem 0' }}>
+                    {exam.title}
+                  </h3>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', fontSize: '0.84rem', color: 'var(--ink-soft)' }}>
+                    <span>{new Date(exam.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                    {exam.start_time && <span>· {exam.start_time}</span>}
+                    {exam.location && <span>· {exam.location}</span>}
+                  </div>
                 </div>
 
-                {/* Date / Time / Location metadata */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.85rem', padding: '0.5rem 0', borderBottom: '1px solid var(--border-color)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Calendar size={14} />
-                    <span>{exam.date}</span>
+                {/* Syllabus Topic Checkpoints */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-faint)', textTransform: 'uppercase' }}>
+                      Syllabus Readiness
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink)' }}>
+                      {progressPct}% ({activeCompleted.length}/{syllabusItems.length})
+                    </span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Clock size={14} />
-                    <span>{exam.start_time}</span>
-                  </div>
-                  {exam.location && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <MapPin size={14} />
-                      <span>{exam.location}</span>
-                    </div>
-                  )}
-                </div>
 
-                {/* Preparation Section (Syllabus checklist) */}
-                {syllabusItems.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <BookOpen size={14} />
-                        Syllabus Preparation Checklist:
-                      </span>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        {activeCompleted.length} of {syllabusItems.length} topics studied (<strong>{progressPct}%</strong> Ready)
-                      </span>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div 
-                        style={{ 
-                          width: `${progressPct}%`, 
-                          height: '100%', 
-                          background: progressPct === 100 ? 'var(--success)' : 'var(--primary)',
-                          transition: 'width 0.3s ease' 
-                        }} 
-                      />
-                    </div>
-
-                    {/* Checkbox checklist */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.6rem', marginTop: '0.4rem' }}>
-                      {syllabusItems.map((topic, i) => {
-                        const checked = activeCompleted.includes(topic);
+                  {syllabusItems.length === 0 ? (
+                    <span style={{ fontSize: '0.8rem', color: 'var(--ink-faint)', fontStyle: 'italic' }}>No syllabus topics provided</span>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      {syllabusItems.map((topic, tIdx) => {
+                        const isDone = activeCompleted.includes(topic);
                         return (
                           <div 
-                            key={i} 
-                            style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '0.5rem', 
-                              fontSize: '0.8rem', 
-                              color: checked ? 'var(--text-muted)' : 'var(--text-primary)',
-                              cursor: 'pointer' 
-                            }}
+                            key={tIdx}
                             onClick={() => handleToggleTopic(exam.id, topic)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.6rem',
+                              fontSize: '0.82rem',
+                              color: isDone ? 'var(--ink-faint)' : 'var(--ink)',
+                              textDecoration: isDone ? 'line-through' : 'none',
+                              cursor: 'pointer'
+                            }}
                           >
-                            <div 
-                              style={{ 
-                                width: '16px', 
-                                height: '16px', 
-                                border: '1px solid var(--border-color)', 
-                                borderRadius: '3px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: checked ? 'var(--success)' : 'var(--bg-input)',
-                                borderColor: checked ? 'var(--success)' : 'var(--border-color)'
-                              }}
-                            >
-                              {checked && <X size={10} style={{ color: 'white', transform: 'rotate(45deg)' }} />}
+                            <div style={{ width: '14px', height: '14px', borderRadius: '3px', border: '1px solid var(--line)', background: isDone ? 'var(--petal)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', flexShrink: 0 }}>
+                              {isDone && <Check size={10} />}
                             </div>
-                            <span style={{ textDecoration: checked ? 'line-through' : 'none' }}>{topic}</span>
+                            <span>{topic}</span>
                           </div>
                         );
                       })}
                     </div>
-                  </div>
-                )}
+                  )}
 
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteExam(exam.id)}
+                      style={{ background: 'none', border: 'none', color: 'var(--ink-faint)', cursor: 'pointer', fontSize: '0.75rem' }}
+                    >
+                      Delete Evaluation
+                    </button>
+                  </div>
+                </div>
               </div>
             );
           })}
@@ -394,101 +361,51 @@ export const Exams: React.FC = () => {
 
       {/* CREATE EXAM MODAL */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Add Exam to Schedule</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}>
-                <X size={20} />
-              </button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(45, 21, 39, 0.4)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={() => setShowModal(false)}>
+          <div style={{ background: 'var(--pearl)', border: '1px solid var(--line)', borderRadius: '12px', padding: '2.5rem', width: '100%', maxWidth: '480px', boxShadow: 'var(--shadow-lift)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 500, margin: 0 }}>Schedule Examination</h3>
+              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-soft)' }}><X size={18} /></button>
             </div>
 
-            {formError && <div className="alert-banner danger">{formError}</div>}
+            {formError && <div style={{ padding: '0.6rem', background: '#fee2e2', color: '#991b1b', borderRadius: '4px', fontSize: '0.8rem', marginBottom: '1rem' }}>{formError}</div>}
 
             <form onSubmit={handleCreateExam} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-              <div className="form-group">
-                <label>Exam Title / Exam Component</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="e.g. Midterm 1, Final Paper"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
+              <div>
+                <label style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.3rem' }}>COURSE SUBJECT</label>
+                <select value={selectedSubjectId} onChange={e => setSelectedSubjectId(e.target.value)} style={{ width: '100%', padding: '0.65rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} required>
+                  {subjects.map(s => <option key={s.id} value={s.id}>{s.code} — {s.name}</option>)}
+                </select>
               </div>
 
-              <div className="form-group">
-                <label>Subject / Course</label>
-                {subjects.length === 0 ? (
-                  <div style={{ fontSize: '0.85rem', color: 'var(--warning)', marginTop: '0.2rem' }}>
-                    No subjects found. Create a subject on the **Timetable** page first.
-                  </div>
-                ) : (
-                  <select 
-                    className="form-select"
-                    value={selectedSubjectId}
-                    onChange={(e) => setSelectedSubjectId(e.target.value)}
-                  >
-                    {subjects.map(s => (
-                      <option key={s.id} value={s.id}>{s.code} - {s.name}</option>
-                    ))}
-                  </select>
-                )}
+              <div>
+                <label style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.3rem' }}>TITLE / DESCRIPTION</label>
+                <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Midterm Examination" style={{ width: '100%', padding: '0.65rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} required />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label>Exam Date</label>
-                  <input 
-                    type="date" 
-                    className="form-input" 
-                    value={examDate}
-                    onChange={(e) => setExamDate(e.target.value)}
-                    required
-                  />
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.3rem' }}>DATE</label>
+                  <input type="date" value={examDate} onChange={e => setExamDate(e.target.value)} style={{ width: '100%', padding: '0.65rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} required />
                 </div>
-                <div className="form-group">
-                  <label>Start Time</label>
-                  <input 
-                    type="time" 
-                    className="form-input" 
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    required
-                  />
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.3rem' }}>START TIME</label>
+                  <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} style={{ width: '100%', padding: '0.65rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} />
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Location / Room</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="e.g. Science Auditorium, Hall A"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                />
+              <div>
+                <label style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.3rem' }}>LOCATION / VENUE</label>
+                <input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Main Auditorium, Dome 1" style={{ width: '100%', padding: '0.65rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} />
               </div>
 
-              <div className="form-group">
-                <label>Syllabus Topics (Comma or Line Separated)</label>
-                <textarea 
-                  className="form-input" 
-                  style={{ minHeight: '80px', resize: 'vertical' }}
-                  placeholder="e.g. Limits, Derivatives, Integration by Parts, Matrix Math"
-                  value={syllabus}
-                  onChange={(e) => setSyllabus(e.target.value)}
-                />
+              <div>
+                <label style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.3rem' }}>SYLLABUS TOPICS (Separated by comma or newline)</label>
+                <textarea value={syllabus} onChange={e => setSyllabus(e.target.value)} rows={3} placeholder="Topic 1, Topic 2, Topic 3" style={{ width: '100%', padding: '0.65rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none', resize: 'vertical' }} />
               </div>
 
-              <button 
-                type="submit" 
-                className="btn-primary" 
-                disabled={isSubmitting}
-                style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem', opacity: isSubmitting ? 0.7 : 1 }}
-              >
-                {isSubmitting ? 'Scheduling Exam...' : 'Schedule Exam'}
+              <button type="submit" disabled={isSubmitting} style={{ padding: '0.8rem', background: 'var(--plum)', color: 'var(--cream)', border: 'none', borderRadius: '9999px', fontWeight: 700, cursor: 'pointer', marginTop: '0.5rem' }}>
+                {isSubmitting ? 'Saving...' : 'Save Examination'}
               </button>
             </form>
           </div>

@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth, API_BASE_URL } from '../context/AuthContext';
-import { 
-  Trophy, 
-  Flame, 
-  Lock, 
-  Zap, 
-  TrendingUp,
-  Gift
-} from 'lucide-react';
 
 interface Achievement {
   id: string;
@@ -78,8 +70,16 @@ const DEFAULT_ACHIEVEMENTS: Achievement[] = [
   { id: 'attendance_ace', title: 'Attendance Ace', description: 'Attend 25 scheduled timetable lectures.', category: 'Academic', badgeIcon: '🌟', xpReward: 150, target: 25, progress: 0, isUnlocked: false, unlockedAt: null },
   { id: 'consistent_scholar', title: 'Consistent Scholar', description: 'Maintain a 3-day daily study & attendance streak.', category: 'Consistency', badgeIcon: '⚡', xpReward: 60, target: 3, progress: 0, isUnlocked: false, unlockedAt: null },
   { id: 'on_fire', title: 'On Fire', description: 'Maintain a 7-day daily study & attendance streak.', category: 'Consistency', badgeIcon: '🔥', xpReward: 120, target: 7, progress: 0, isUnlocked: false, unlockedAt: null },
-  { id: 'century_club', title: 'Century Club', description: 'Accumulate 500 total XP across all academic activities.', category: 'Milestone', badgeIcon: '🏆', xpReward: 100, target: 500, progress: 0, isUnlocked: false, unlockedAt: null },
-  { id: 'grand_scholar', title: 'Grand Scholar', description: 'Accumulate 1,500 total XP and master your semester.', category: 'Milestone', badgeIcon: '👑', xpReward: 200, target: 1500, progress: 0, isUnlocked: false, unlockedAt: null }
+  { id: 'century_club', title: 'Century Club', description: 'Accumulate 100 hours of focused study logged.', category: 'Milestone', badgeIcon: '🏛️', xpReward: 200, target: 100, progress: 0, isUnlocked: false, unlockedAt: null },
+  { id: 'grand_scholar', title: 'Grand Scholar', description: 'Reach Level 10 in Campusly.', category: 'Milestone', badgeIcon: '👑', xpReward: 250, target: 10, progress: 0, isUnlocked: false, unlockedAt: null }
+];
+
+const DEFAULT_SOURCES: XPSourceItem[] = [
+  { action: 'Log Class Attendance', xp: '+20 XP', icon: '🎒', desc: 'Mark scheduled classes as present.' },
+  { action: 'Complete Deliverable', xp: '+15 XP', icon: '📝', desc: 'Finish assignments and study tasks.' },
+  { action: 'Focused Study Block', xp: '+30 XP', icon: '☕', desc: 'Complete 25m Pomodoro cycles in Study Room.' },
+  { action: 'Daily Activity Streak', xp: '+10 XP', icon: '🔥', desc: 'Log in and attend classes on consecutive days.' },
+  { action: 'Unlock Milestone Badge', xp: '+50–250 XP', icon: '👑', desc: 'Reach academic and study milestones.' }
 ];
 
 export const CampusXP: React.FC = () => {
@@ -92,19 +92,20 @@ export const CampusXP: React.FC = () => {
   const fetchGamificationData = async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await fetch(`${API_BASE_URL}/gamification/summary`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
-
       if (!res.ok) {
-        throw new Error('Failed to load gamification metrics.');
+        throw new Error('Failed to load gamification summary');
       }
-
-      const summaryData = await res.json();
-      setData(summaryData);
+      const json = await res.json();
+      setData(json);
     } catch (err: any) {
-      console.error('Gamification fetch error:', err);
-      setError(err.message || 'Error fetching progression data.');
+      console.error(err);
+      setError(err.message || 'Error fetching XP summary');
     } finally {
       setLoading(false);
     }
@@ -118,21 +119,22 @@ export const CampusXP: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <div style={{ color: 'var(--text-secondary)' }}>Loading Campus XP progression...</div>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', color: 'var(--ink-soft)' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.15rem' }}>
+          Consulting academic standing... ✧
+        </div>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="section-card" style={{ padding: '2rem', textAlign: 'center' }}>
+      <div style={{ padding: '3.5rem 0', textAlign: 'center', color: 'var(--ink-soft)' }}>
         <p style={{ color: 'var(--danger)' }}>{error || 'Unable to load progression.'}</p>
         <button 
           type="button" 
-          className="btn-primary" 
           onClick={fetchGamificationData}
-          style={{ marginTop: '1rem', padding: '0.4rem 1rem' }}
+          style={{ marginTop: '1rem', padding: '0.45rem 1rem', background: 'var(--plum)', color: 'var(--cream)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
         >
           Retry
         </button>
@@ -150,158 +152,195 @@ export const CampusXP: React.FC = () => {
     : allAchievements.filter(a => a.category.toLowerCase() === activeCategory.toLowerCase());
 
   const unlockedCount = allAchievements.filter(a => a.isUnlocked).length;
+  const sources = (data.xpSources && data.xpSources.length > 0) ? data.xpSources : DEFAULT_SOURCES;
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
+    <div className="animate-page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', maxWidth: '1240px', margin: '0 auto', paddingBottom: '3.5rem' }}>
       
-      {/* 1. HERO PROGRESSION & LEVEL CARD */}
-      <div 
-        className="section-card" 
-        style={{ 
-          background: 'linear-gradient(135deg, rgba(255, 120, 153, 0.08) 0%, rgba(204, 228, 246, 0.12) 100%)',
-          border: '1px solid var(--border-color)',
-          padding: '1.8rem',
-          position: 'relative',
-          overflow: 'hidden'
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+      {/* 1. OPEN CANVAS EDITORIAL HEADER */}
+      <div style={{ borderBottom: '1px solid var(--line)', paddingBottom: '2rem' }}>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+          <span className="sci-fi-tag">PRESTIGE & REWARDS</span>
+          <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-faint)' }}>
+            SERVER-VALIDATED PROTOCOL
+          </span>
+        </div>
+
+        <h1 style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 'clamp(2.1rem, 3.8vw, 3rem)',
+          fontWeight: 400,
+          lineHeight: 1.08,
+          letterSpacing: '-0.03em',
+          color: 'var(--ink)',
+          margin: 0
+        }}>
+          Prestige & Standing, <br />
+          <span style={{ fontStyle: 'italic', color: 'var(--petal)', fontWeight: 300 }}>earned quietly</span>.
+        </h1>
+
+        <p style={{
+          fontSize: '0.98rem',
+          lineHeight: 1.55,
+          color: 'var(--ink-soft)',
+          marginTop: '0.8rem',
+          maxWidth: '640px',
+          margin: '0.8rem 0 0 0'
+        }}>
+          Academic experience is awarded automatically as you plan, attend scheduled lectures, complete deliverables, and focus in the Study Room.
+        </p>
+
+        {/* Big Open Stat Display */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '3rem', marginTop: '2rem', flexWrap: 'wrap' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span className="badge" style={{ background: 'var(--primary)', color: '#ffffff', fontWeight: 800, padding: '0.25rem 0.7rem' }}>
-                LEVEL {data.level}
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Current Rank
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', marginTop: '0.2rem' }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 400, lineHeight: 1, color: 'var(--ink)' }}>
+                Level {data.level}
               </span>
-              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--petal)', fontWeight: 650 }}>
                 {data.levelTitle}
               </span>
             </div>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '0.4rem', fontFamily: 'var(--font-serif)' }}>
-              Campus XP Progression
-            </h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem', maxWidth: '520px' }}>
-              Earn XP organically as you plan, attend scheduled lectures, complete assignments, and focus in the Study Room.
-            </p>
           </div>
 
-          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-            <span style={{ fontSize: '2rem', fontWeight: 850, color: 'var(--primary)', lineHeight: 1.1 }}>
-              {data.totalXP.toLocaleString()} <span style={{ fontSize: '1rem', fontWeight: 700 }}>XP</span>
-            </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Experience Earned</span>
+          <div style={{ width: '1px', height: '40px', background: 'var(--line)' }} />
+
+          <div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Total Experience
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '2.4rem', fontWeight: 700, color: 'var(--ink)', marginTop: '0.2rem' }}>
+              {data.totalXP.toLocaleString()} <span style={{ fontSize: '0.9rem', color: 'var(--ink-faint)' }}>XP</span>
+            </div>
+          </div>
+
+          <div style={{ width: '1px', height: '40px', background: 'var(--line)' }} />
+
+          <div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Daily Streak
+            </div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '2.4rem', fontWeight: 400, color: 'var(--ink)', marginTop: '0.2rem' }}>
+              {data.currentStreak} <span style={{ fontSize: '0.9rem', color: 'var(--ink-faint)' }}>days active</span>
+            </div>
           </div>
         </div>
 
         {/* Level Progress Bar */}
-        <div style={{ marginTop: '1.4rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-            <span>Level {data.level} ({data.currentLevelBaseXP} XP)</span>
-            <span>{data.xpRemaining > 0 ? `${data.xpRemaining} XP needed for Level ${data.level + 1}` : 'Max Level Reached'}</span>
-            <span>Level {data.level + 1} ({data.nextLevelTargetXP} XP)</span>
+        <div style={{ marginTop: '1.8rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-faint)', marginBottom: '0.35rem' }}>
+            <span>LEVEL {data.level} ({data.currentLevelBaseXP} XP)</span>
+            <span style={{ color: 'var(--petal)', fontWeight: 700 }}>{data.xpRemaining > 0 ? `${data.xpRemaining} XP TO LEVEL ${data.level + 1}` : 'MAX RANK'}</span>
+            <span>LEVEL {data.level + 1} ({data.nextLevelTargetXP} XP)</span>
           </div>
-          
-          <div style={{ height: '12px', background: 'var(--bg-app)', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border-color)', position: 'relative' }}>
-            <div 
-              style={{ 
-                height: '100%', 
-                width: `${data.progressPercent}%`, 
-                background: 'linear-gradient(90deg, var(--primary) 0%, #ff9ebb 100%)',
-                borderRadius: '10px',
-                transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-              }} 
-            />
+          <div style={{ height: '3px', background: 'var(--line)', borderRadius: '9999px', overflow: 'hidden' }}>
+            <div style={{ width: `${data.progressPercent}%`, height: '100%', background: 'var(--petal)', borderRadius: '9999px', transition: 'width 0.5s ease' }} />
           </div>
         </div>
+
       </div>
 
-      {/* 2. STATS ROW: STREAKS & XP SOURCES */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.2rem' }}>
+      {/* 2. RESTORED DAILY CHECK-IN & HOW TO EARN REWARDS */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '3.5rem', borderBottom: '1px solid var(--line)', paddingBottom: '2.5rem' }}>
         
-        {/* Streak & Consistency Card */}
-        <div className="section-card" style={{ padding: '1.4rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Flame size={18} style={{ color: '#ff6b6b' }} /> Daily Activity Streak
-              </h3>
-              <span className="badge" style={{ background: data.currentStreak > 0 ? 'rgba(255, 107, 107, 0.15)' : 'var(--bg-app)', color: data.currentStreak > 0 ? '#ff6b6b' : 'var(--text-muted)' }}>
-                Best: {data.longestStreak} Days
-              </span>
-            </div>
+        {/* Daily Streak & Weekly Activity Check-in */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--line)' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Daily Activity & Streak Check-in
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--ink-soft)' }}>
+              Best: {data.longestStreak} Days
+            </span>
+          </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '0.8rem 0' }}>
-              <div style={{ fontSize: '2.5rem', lineHeight: 1 }}>🔥</div>
-              <div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 850, color: 'var(--text-primary)' }}>
-                  {data.currentStreak} {data.currentStreak === 1 ? 'Day' : 'Days'}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                  {data.currentStreak > 0 
-                    ? 'Keep attending classes and studying to maintain your streak!' 
-                    : 'Log an attendance or study session today to start your streak!'}
-                </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem', margin: '1rem 0' }}>
+            <div style={{ fontSize: '2.4rem', lineHeight: 1 }}>🔥</div>
+            <div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--ink)', fontFamily: 'var(--font-display)' }}>
+                {data.currentStreak} {data.currentStreak === 1 ? 'Day Active Streak' : 'Days Active Streak'}
               </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', margin: '0.15rem 0 0 0' }}>
+                {data.currentStreak > 0 
+                  ? 'Attendance logged or study session completed today. Keep the chain unbroken!'
+                  : 'Log a class attendance or study session today to start your streak.'}
+              </p>
             </div>
+          </div>
 
-            {/* Weekly Activity Dots */}
-            <div style={{ marginTop: '1rem' }}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>THIS WEEK'S ACTIVITY</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.3rem', textAlign: 'center' }}>
-                {data.activeDaysThisWeek.map((day, idx) => (
-                  <div 
-                    key={idx} 
-                    style={{ 
-                      background: day.isActive ? 'var(--primary)' : 'var(--bg-app)',
-                      color: day.isActive ? '#ffffff' : 'var(--text-muted)',
-                      border: day.isToday ? '1.5px solid var(--primary)' : '1px solid var(--border-color)',
-                      padding: '0.4rem 0.2rem',
-                      borderRadius: 'var(--radius-sm)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '0.2rem'
-                    }}
-                  >
-                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>{day.dayName}</span>
-                    <span style={{ fontSize: '0.8rem' }}>{day.isActive ? '✓' : '•'}</span>
-                  </div>
-                ))}
-              </div>
+          {/* Weekly Activity Tracker */}
+          <div style={{ marginTop: '1.4rem' }}>
+            <div style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-faint)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+              7-Day Academic Rhythm
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.4rem', textAlign: 'center' }}>
+              {data.activeDaysThisWeek.map((day, idx) => (
+                <div 
+                  key={idx}
+                  style={{
+                    padding: '0.6rem 0.2rem',
+                    border: day.isToday ? '1.5px solid var(--plum)' : '1px solid var(--line)',
+                    borderRadius: '4px',
+                    background: day.isActive ? 'rgba(244, 114, 182, 0.12)' : 'transparent',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.2rem'
+                  }}
+                >
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', fontWeight: 700, color: day.isToday ? 'var(--plum)' : 'var(--ink-faint)' }}>
+                    {day.dayName}
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: day.isActive ? 'var(--petal)' : 'var(--ink-faint)', fontWeight: 700 }}>
+                    {day.isActive ? '✓' : '—'}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* XP Sources Guide Card */}
-        <div className="section-card" style={{ padding: '1.4rem' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.8rem' }}>
-            <Zap size={18} style={{ color: 'var(--primary)' }} /> How to Earn XP
-          </h3>
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.8rem' }}>
-            XP is granted automatically by the server when you complete genuine academic tasks:
-          </p>
+        {/* How to Earn XP / Rewards Guide */}
+        <div style={{ borderLeft: '1px solid var(--line)', paddingLeft: '2.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--line)' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              How to Earn Experience & Standing
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--petal)', fontWeight: 700 }}>
+              XP PROTOCOL
+            </span>
+          </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {data.xpSources.map((source, idx) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {sources.map((item, sIdx) => (
               <div 
-                key={idx} 
-                style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
-                  background: 'var(--bg-app)', 
-                  padding: '0.5rem 0.8rem', 
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-color)'
+                key={sIdx}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.65rem 0',
+                  borderBottom: sIdx < sources.length - 1 ? '1px dashed var(--line)' : 'none'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.9rem' }}>{source.icon}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                  <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
                   <div>
-                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>{source.action}</div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{source.desc}</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 650, color: 'var(--ink)' }}>
+                      {item.action}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--ink-faint)' }}>
+                      {item.desc}
+                    </div>
                   </div>
                 </div>
-                <span className="badge" style={{ background: 'rgba(255, 120, 153, 0.15)', color: 'var(--primary)', fontWeight: 800 }}>
-                  {source.xp}
+
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', fontWeight: 700, color: 'var(--petal)' }}>
+                  {item.xp}
                 </span>
               </div>
             ))}
@@ -310,245 +349,95 @@ export const CampusXP: React.FC = () => {
 
       </div>
 
-      {/* 3. ACHIEVEMENTS & BADGES SECTION */}
-      <div className="section-card" style={{ padding: '1.6rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.8rem', marginBottom: '1.2rem' }}>
+      {/* 3. ACHIEVEMENTS MATRIX */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid var(--line)', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-primary)' }}>
-              <Trophy size={20} style={{ color: '#f59e0b' }} /> Badges & Achievements
-            </h3>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-faint)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Badges & Achievements
+            </span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginLeft: '1rem' }}>
               Unlocked {unlockedCount} of {data.achievements.length} badges
             </span>
           </div>
 
-          {/* Category Filter Pills */}
-          <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             {categories.map(cat => (
               <button
                 key={cat}
                 type="button"
-                className="badge"
                 onClick={() => setActiveCategory(cat)}
                 style={{
-                  padding: '0.35rem 0.7rem',
+                  padding: '0.35rem 0.8rem',
                   fontSize: '0.72rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  background: activeCategory === cat ? 'var(--primary)' : 'var(--bg-app)',
-                  color: activeCategory === cat ? '#ffffff' : 'var(--text-secondary)',
-                  border: '1px solid var(--border-color)',
-                  transition: 'var(--transition)'
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: activeCategory === cat ? 700 : 500,
+                  border: '1px solid var(--line)',
+                  borderRadius: '3px',
+                  background: activeCategory === cat ? 'var(--plum)' : 'transparent',
+                  color: activeCategory === cat ? 'var(--cream)' : 'var(--ink-soft)',
+                  cursor: 'pointer'
                 }}
               >
-                {cat}
+                {cat.toUpperCase()}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Achievements Matrix (2 rows visible, rest scrollable) */}
+        {/* 2-Row Scroll Area for Badges with Hairline Grid */}
         <div 
           style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-            gap: '1rem',
-            maxHeight: '450px',
+            gap: '1.2rem',
+            maxHeight: '440px',
             overflowY: 'auto',
-            paddingRight: '0.4rem'
+            paddingTop: '1.2rem',
+            paddingRight: '0.5rem'
           }}
         >
-          {filteredAchievements.map(ach => {
-            const isCompleted = ach.isUnlocked;
-            const pct = Math.round((ach.progress / ach.target) * 100);
-
-            return (
-              <div 
-                key={ach.id} 
-                style={{ 
-                  background: isCompleted ? 'linear-gradient(145deg, var(--bg-surface) 0%, rgba(255, 120, 153, 0.05) 100%)' : 'var(--bg-app)',
-                  border: isCompleted ? '1.5px solid rgba(255, 120, 153, 0.35)' : '1px dashed var(--border-color)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '1.1rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  gap: '0.8rem',
-                  opacity: isCompleted ? 1 : 0.85,
-                  transition: 'var(--transition)'
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                      <div 
-                        style={{ 
-                          fontSize: '1.6rem', 
-                          background: isCompleted ? 'rgba(255, 120, 153, 0.15)' : 'rgba(0,0,0,0.05)', 
-                          width: '42px', 
-                          height: '42px', 
-                          borderRadius: 'var(--radius-md)',
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center',
-                          filter: isCompleted ? 'none' : 'grayscale(100%)'
-                        }}
-                      >
-                        {ach.badgeIcon}
-                      </div>
-                      <div>
-                        <h4 style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)' }}>{ach.title}</h4>
-                        <span className="badge" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', background: 'var(--bg-surface)' }}>{ach.category}</span>
-                      </div>
-                    </div>
-
-                    {isCompleted ? (
-                      <span className="badge badge-safe" style={{ fontSize: '0.68rem', fontWeight: 800 }}>UNLOCKED</span>
-                    ) : (
-                      <Lock size={14} style={{ color: 'var(--text-muted)', marginTop: '0.2rem' }} />
-                    )}
-                  </div>
-
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.6rem', lineHeight: 1.4 }}>
-                    {ach.description}
-                  </p>
-
-                  {!isCompleted && (
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.4rem', fontStyle: 'italic' }}>
-                      Requirement: {ach.target - ach.progress} more needed
-                    </div>
-                  )}
-
-                  {isCompleted && ach.unlockedAt && (
-                    <div style={{ fontSize: '0.68rem', color: 'var(--success)', marginTop: '0.4rem', fontWeight: 700 }}>
-                      Unlocked {new Date(ach.unlockedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                    <span>Progress</span>
-                    <span>{ach.progress} / {ach.target} ({Math.min(100, pct)}%)</span>
-                  </div>
-
-                  <div style={{ height: '6px', background: 'var(--border-color)', borderRadius: '6px', overflow: 'hidden' }}>
-                    <div 
-                      style={{ 
-                        height: '100%', 
-                        width: `${Math.min(100, pct)}%`, 
-                        background: isCompleted ? 'var(--success)' : 'var(--primary)',
-                        borderRadius: '6px'
-                      }} 
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', fontSize: '0.7rem' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Reward</span>
-                    <span style={{ fontWeight: 800, color: 'var(--primary)' }}>+{ach.xpReward} XP</span>
-                  </div>
-                </div>
+          {filteredAchievements.map(ach => (
+            <div 
+              key={ach.id}
+              style={{
+                border: '1px solid var(--line)',
+                padding: '1.1rem',
+                borderRadius: '4px',
+                background: ach.isUnlocked ? 'rgba(255, 253, 249, 0.8)' : 'rgba(250, 246, 240, 0.4)',
+                opacity: ach.isUnlocked ? 1 : 0.6,
+                display: 'flex',
+                gap: '0.9rem',
+                alignItems: 'flex-start'
+              }}
+            >
+              <div style={{ fontSize: '1.8rem', lineHeight: 1, filter: ach.isUnlocked ? 'none' : 'grayscale(100%)' }}>
+                {ach.badgeIcon}
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 4. RECENT XP ACTIVITY & FUTURE REWARDS GRID */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.2rem' }}>
-        
-        {/* Recent XP Activity Stream */}
-        <div className="section-card" style={{ padding: '1.4rem' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.8rem' }}>
-            <TrendingUp size={18} style={{ color: 'var(--primary)' }} /> Recent XP Activity
-          </h3>
-
-          {data.recentActivity.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-              No XP activity recorded yet. Start by attending a class or completing a study session!
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '380px', overflowY: 'auto' }}>
-              {data.recentActivity.map((act) => (
-                <div 
-                  key={act.id}
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    background: 'var(--bg-app)', 
-                    padding: '0.55rem 0.8rem', 
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-color)'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <span style={{ fontSize: '0.9rem' }}>{act.icon}</span>
-                    <div>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>{act.displayTitle}</div>
-                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                        {new Date(act.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-                  </div>
-                  <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--success)' }}>
-                    +{act.xpAmount} XP
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.02rem', fontWeight: 600, color: 'var(--ink)', margin: 0 }}>
+                    {ach.title}
+                  </h4>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', fontWeight: 700, color: 'var(--petal)' }}>
+                    +{ach.xpReward} XP
                   </span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Future Rewards & Unlockables Showcase */}
-        <div className="section-card" style={{ padding: '1.4rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Gift size={18} style={{ color: 'var(--primary)' }} /> Upcoming Rewards
-            </h3>
-            <span className="badge" style={{ background: 'var(--bg-app)', color: 'var(--text-muted)', fontSize: '0.65rem' }}>
-              ROADMAP
-            </span>
-          </div>
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.8rem' }}>
-            Future milestones and unlockable cosmetics earned through academic consistency:
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {data.futureRewards.map((reward) => (
-              <div 
-                key={reward.id}
-                style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
-                  background: reward.isUnlocked ? 'var(--bg-surface)' : 'var(--bg-app)', 
-                  padding: '0.6rem 0.8rem', 
-                  borderRadius: 'var(--radius-sm)',
-                  border: reward.isUnlocked ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                  opacity: reward.isUnlocked ? 1 : 0.75
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <span style={{ fontSize: '1.2rem' }}>{reward.icon}</span>
-                  <div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>{reward.title}</div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{reward.type}</div>
-                  </div>
-                </div>
+                <p style={{ fontSize: '0.76rem', color: 'var(--ink-soft)', margin: '0.25rem 0 0.5rem 0', lineHeight: 1.45 }}>
+                  {ach.description}
+                </p>
                 
-                {reward.isUnlocked ? (
-                  <span className="badge badge-safe" style={{ fontSize: '0.65rem', fontWeight: 800 }}>UNLOCKED</span>
-                ) : (
-                  <span className="badge" style={{ fontSize: '0.68rem', background: 'var(--bg-surface)', color: 'var(--text-muted)' }}>
-                    Level {reward.reqLevel}
-                  </span>
-                )}
+                <div style={{ height: '3px', background: 'var(--line)', borderRadius: '9999px', overflow: 'hidden' }}>
+                  <div style={{ width: `${Math.min(100, Math.round((ach.progress / ach.target) * 100))}%`, height: '100%', background: 'var(--petal)', borderRadius: '9999px' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.62rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-faint)', marginTop: '0.25rem' }}>
+                  <span>{ach.isUnlocked ? '✓ UNLOCKED' : 'LOCKED'}</span>
+                  <span>{ach.progress} / {ach.target}</span>
+                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-
       </div>
 
     </div>
