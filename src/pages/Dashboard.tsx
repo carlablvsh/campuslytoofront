@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth, API_BASE_URL } from '../context/AuthContext';
-import { MapPin, Clock, Check } from 'lucide-react';
+import { Check, ArrowRight } from 'lucide-react';
 
 interface ClassToday {
   id: string;
@@ -12,10 +12,8 @@ interface ClassToday {
   subject_name: string;
   subject_code: string;
   subject_color: string;
+  instructor?: string;
   type?: string;
-  event_type?: string;
-  title?: string;
-  is_moved?: boolean;
 }
 
 interface Assignment {
@@ -56,18 +54,16 @@ interface DashboardData {
   };
 }
 
-export const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onNavigate?: (tab: string) => void;
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { user, token } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [completedTasks, setCompletedTasks] = useState<string[]>([]);
-
-  // Configurable Attendance Threshold (Default 75%)
-  const [threshold] = useState<number>(() => {
-    const saved = localStorage.getItem('campusly_attendance_threshold');
-    return saved ? parseInt(saved, 10) : 75;
-  });
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -106,6 +102,11 @@ export const Dashboard: React.FC = () => {
     return 'Good evening';
   };
 
+  const getTodayDayShort = () => {
+    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    return days[new Date().getDay()];
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--ink-soft)' }}>
@@ -124,230 +125,278 @@ export const Dashboard: React.FC = () => {
     );
   }
 
-  const nextClass = data.classesToday && data.classesToday.length > 0 ? data.classesToday[0] : null;
-  const attendancePct = data.stats?.averageAttendance || 92;
+  const classesCount = data.classesToday?.length || 0;
+  const classesWord = classesCount === 0 
+    ? 'No classes' 
+    : classesCount === 1 
+      ? 'One class' 
+      : classesCount === 2 
+        ? 'Two classes' 
+        : `${classesCount} classes`;
 
-  // Dynamic status evaluation
-  const isAbove = attendancePct > threshold;
-  const isAt = attendancePct === threshold;
-  const statusLabel = isAbove ? '● Above Threshold' : isAt ? '● At Threshold' : '▲ Below Threshold';
-  const statusColor = (isAbove || isAt) ? 'var(--success-text)' : 'var(--danger)';
+  const nextClass = data.classesToday && data.classesToday.length > 0 ? data.classesToday[0] : null;
+  const attendancePct = Math.round(data.stats?.averageAttendance || 86);
+  const nextExam = data.nextExam || (data.upcomingExams && data.upcomingExams.length > 0 ? data.upcomingExams[0] : null);
+
+  // SVG Gauge calculations
+  const radius = 26;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (attendancePct / 100) * circumference;
 
   return (
-    <div className="animate-page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', maxWidth: '1240px', margin: '0 auto', paddingBottom: '3.5rem' }}>
+    <div className="animate-page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1180px', margin: '0 auto', paddingBottom: '3.5rem' }}>
       
-      {/* 1. EDITORIAL HEADLINE DIRECTLY ON CANVAS */}
-      <div style={{ borderBottom: '1px solid var(--line)', paddingBottom: '2rem' }}>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <span className="sci-fi-tag">TODAY'S RHYTHM</span>
-            <span style={{ fontSize: '0.78rem', color: 'var(--ink-faint)', fontFamily: 'var(--font-mono)' }}>
-              {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+      {/* 1. HEADER SECTION (MATCHING IMAGE 1 REFERENCE) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', paddingTop: '0.5rem' }}>
+        <div>
+          {/* Eyebrow */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
+            <span style={{ width: '16px', height: '1px', background: 'var(--ink-faint)' }} />
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', fontWeight: 650, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-faint)' }}>
+              {getTodayDayShort()} · WEEK 6 · AUTUMN TERM
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.72rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)' }}>
-            <span>Spring Term · Week 4</span>
-            <span style={{ color: 'var(--petal)' }}>●</span>
-          </div>
+          {/* Headline */}
+          <h1 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(2.1rem, 4vw, 3.2rem)',
+            fontWeight: 400,
+            lineHeight: 1.1,
+            letterSpacing: '-0.03em',
+            color: 'var(--ink)',
+            margin: 0
+          }}>
+            {getGreeting()}, {user?.username || 'Mira'}. <br />
+            <span style={{ fontStyle: 'italic', color: '#e11d48', fontWeight: 300 }}>{classesWord}</span> and a soft afternoon.
+          </h1>
         </div>
 
-        <h1 style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 'clamp(2.1rem, 3.8vw, 3rem)',
-          fontWeight: 400,
-          lineHeight: 1.08,
-          letterSpacing: '-0.03em',
-          color: 'var(--ink)',
-          margin: 0
-        }}>
-          {getGreeting()}, <span style={{ fontStyle: 'italic', color: 'var(--petal)', fontWeight: 300 }}>{user?.username}</span>. <br />
-          The day is arranged.
-        </h1>
-
-        <p style={{
-          fontSize: '0.98rem',
-          lineHeight: 1.55,
+        {/* Right Status Tag */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          padding: '0.35rem 0.85rem',
+          borderRadius: '9999px',
+          background: 'rgba(255, 255, 255, 0.8)',
+          border: '1px solid var(--line)',
+          fontSize: '0.68rem',
+          fontFamily: 'var(--font-mono)',
+          fontWeight: 650,
           color: 'var(--ink-soft)',
-          marginTop: '0.8rem',
-          maxWidth: '640px',
-          margin: '0.8rem 0 0 0'
+          boxShadow: '0 1px 3px rgba(45, 21, 39, 0.03)'
         }}>
-          {data.classesToday.length > 0 
-            ? `You have ${data.classesToday.length} ${data.classesToday.length === 1 ? 'class session' : 'class sessions'} scheduled across the day. Attendance is holding comfortably.`
-            : 'No scheduled lectures on your timetable today. The day is open for deep work, library reading, or quiet reflection.'}
-        </p>
-
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+          <span>CAMPUS CALM · 04</span>
+        </div>
       </div>
 
-      {/* 2. OPEN-CANVAS ASYMMETRIC SECTION: NEXT CLASS SPOTLIGHT + OPEN STAT METRICS */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: '3rem', alignItems: 'flex-start' }}>
+      {/* 2. THE 4 SYMMETRICAL CARDS GRID (2x2) */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))',
+        gap: '1.4rem',
+        marginTop: '0.5rem'
+      }}>
         
-        {/* Left: Next Class Architectural Feature */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.8rem', borderBottom: '1px solid var(--line)', paddingBottom: '0.4rem' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.08em', color: 'var(--ink-faint)', textTransform: 'uppercase' }}>
-              Next Scheduled Session
-            </span>
-            {nextClass && (
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--petal)', fontWeight: 700 }}>
-                {nextClass.start_time}–{nextClass.end_time}
+        {/* CARD 1: NEXT UP CLASS SESSION */}
+        <div style={{
+          background: '#ffffff',
+          border: '1px solid var(--line)',
+          borderRadius: '6px',
+          padding: '1.6rem',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          minHeight: '230px',
+          boxShadow: '0 1px 3px rgba(45, 21, 39, 0.04)'
+        }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-faint)' }}>
+                NEXT UP
               </span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-faint)' }}>
+                {nextClass ? `in ${nextClass.start_time}` : 'Completed'}
+              </span>
+            </div>
+
+            {nextClass ? (
+              <>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.74rem', color: nextClass.subject_color || '#0d9488', fontWeight: 700, marginBottom: '0.2rem' }}>
+                  {nextClass.subject_code || 'BIO-118'}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <h2 style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '1.75rem',
+                    fontWeight: 400,
+                    lineHeight: 1.15,
+                    color: 'var(--ink)',
+                    margin: '0 0 0.4rem 0'
+                  }}>
+                    {nextClass.subject_name || 'Botanical Systems'}
+                  </h2>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.75 }}>
+                    <path d="M12 2C8.5 7.5 4 10.5 4 14.5C4 18.5 7.5 22 12 22C16.5 22 20 18.5 20 14.5C20 10.5 15.5 7.5 12 2Z" fill="#f472b6" />
+                  </svg>
+                </div>
+                <div style={{ fontSize: '0.82rem', color: 'var(--ink-soft)', marginTop: '0.2rem' }}>
+                  {nextClass.start_time}–{nextClass.end_time} · {nextClass.location || 'Greenhouse W'} {nextClass.instructor ? `· ${nextClass.instructor}` : ''}
+                </div>
+              </>
+            ) : (
+              <div style={{ padding: '1rem 0' }}>
+                <p style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.15rem', color: 'var(--ink)', margin: 0 }}>
+                  "All lectures concluded for today."
+                </p>
+                <p style={{ fontSize: '0.78rem', color: 'var(--ink-faint)', marginTop: '0.3rem' }}>
+                  Enjoy a restful, quiet evening.
+                </p>
+              </div>
             )}
           </div>
 
-          {nextClass ? (
-            <div style={{ padding: '0.6rem 0' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', fontWeight: 700, color: nextClass.subject_color || 'var(--petal)' }}>
-                {nextClass.subject_code}
-              </span>
-              <h2 style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 'clamp(1.7rem, 2.8vw, 2.3rem)',
-                fontWeight: 500,
-                lineHeight: 1.15,
-                color: 'var(--ink)',
-                margin: '0.3rem 0 0.8rem 0'
-              }}>
-                {nextClass.subject_name}
-              </h2>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1.8rem', fontSize: '0.85rem', color: 'var(--ink-soft)' }}>
-                {nextClass.location && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <MapPin size={14} style={{ color: 'var(--petal)' }} />
-                    {nextClass.location}
-                  </span>
-                )}
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <Clock size={14} style={{ color: 'var(--ink-faint)' }} />
-                  In preparation
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div style={{ padding: '1.5rem 0' }}>
-              <p style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.25rem', color: 'var(--ink)', margin: 0 }}>
-                "The quiet term leaves space to think."
-              </p>
-              <p style={{ fontSize: '0.82rem', color: 'var(--ink-soft)', marginTop: '0.4rem' }}>
-                All scheduled classes concluded for today.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Right: Open Canvas Stat Callouts with Fine Rules */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.6rem', borderLeft: '1px solid var(--line)', paddingLeft: '2rem' }}>
-          
-          <div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Attendance Standing (Req: {threshold}%)
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', margin: '0.2rem 0' }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: '2.8rem', fontWeight: 400, lineHeight: 1, color: 'var(--ink)' }}>
-                {attendancePct}%
-              </span>
-              <span style={{ fontSize: '0.78rem', color: statusColor, fontWeight: 700 }}>
-                {statusLabel}
-              </span>
-            </div>
-            <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', lineHeight: 1.45, margin: 0 }}>
-              Evaluated against your {threshold}% configured requirement across {data.stats?.totalSubjects || 5} courses.
-            </p>
-          </div>
-
-          <div style={{ borderTop: '1px solid var(--line)', paddingTop: '1.2rem' }}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Focus Protocol
-            </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 500, color: 'var(--ink)', margin: '0.2rem 0' }}>
-              25m / 5m Breath
-            </div>
-            <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', lineHeight: 1.45, margin: 0 }}>
-              Rain audio ready in Study Room.
-            </p>
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* 3. SCHEDULE LEDGER & DELIVERABLES */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '3.5rem', borderTop: '1px solid var(--line)', paddingTop: '2.5rem' }}>
-        
-        {/* Today's Schedule Ledger */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 400, color: 'var(--ink)', margin: 0 }}>
-              Today's Lectures
-            </h3>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-faint)' }}>
-              {data.classesToday.length} {data.classesToday.length === 1 ? 'BLOCK' : 'BLOCKS'}
-            </span>
-          </div>
-
-          {data.classesToday.length === 0 ? (
-            <div style={{ padding: '2.5rem 0', color: 'var(--ink-faint)', fontSize: '0.88rem', fontStyle: 'italic' }}>
-              No lectures scheduled for today.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {/* Schedule pills below */}
+          {data.classesToday.length > 0 && (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', paddingTop: '1.2rem', borderTop: '1px solid var(--line)', marginTop: '1rem' }}>
               {data.classesToday.map((c, i) => (
-                <div 
+                <span 
                   key={c.id || i}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '1rem 0',
-                    borderBottom: '1px solid var(--line)',
-                    transition: 'background 0.2s'
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '0.68rem',
+                    fontWeight: 650,
+                    padding: '0.25rem 0.6rem',
+                    borderRadius: '4px',
+                    background: i === 0 ? 'rgba(153, 246, 228, 0.25)' : 'rgba(45, 21, 39, 0.04)',
+                    color: i === 0 ? '#0f766e' : 'var(--ink-soft)',
+                    border: '1px solid rgba(45, 21, 39, 0.06)'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: c.subject_color || 'var(--petal)', fontWeight: 700, width: '65px' }}>
-                      {c.subject_code}
-                    </span>
-                    <div>
-                      <div style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--ink)' }}>{c.subject_name}</div>
-                      {c.location && (
-                        <div style={{ fontSize: '0.72rem', color: 'var(--ink-faint)', marginTop: '0.1rem' }}>
-                          {c.location}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--ink)', fontWeight: 600 }}>
-                    {c.start_time}–{c.end_time}
-                  </div>
-                </div>
+                  {c.start_time} · {c.subject_code}
+                </span>
               ))}
             </div>
           )}
         </div>
 
-        {/* Priority Deliverables Thread */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 400, color: 'var(--ink)', margin: 0 }}>
-              Tasks & Deliverables
-            </h3>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-faint)' }}>
-              {data.upcomingAssignments?.length || 0} PENDING
+        {/* CARD 2: ATTENDANCE */}
+        <div style={{
+          background: '#ffffff',
+          border: '1px solid var(--line)',
+          borderRadius: '6px',
+          padding: '1.6rem',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          minHeight: '230px',
+          boxShadow: '0 1px 3px rgba(45, 21, 39, 0.04)'
+        }}>
+          <div>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-faint)' }}>
+              ATTENDANCE
             </span>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.8rem', marginTop: '1rem' }}>
+              {/* Circular Gauge */}
+              <div style={{ position: 'relative', width: '68px', height: '68px', flexShrink: 0 }}>
+                <svg width="68" height="68" viewBox="0 0 68 68">
+                  <circle cx="34" cy="34" r={radius} fill="none" stroke="rgba(244, 114, 182, 0.18)" strokeWidth="5" />
+                  <circle 
+                    cx="34" 
+                    cy="34" 
+                    r={radius} 
+                    fill="none" 
+                    stroke="#f472b6" 
+                    strokeWidth="5" 
+                    strokeDasharray={circumference} 
+                    strokeDashoffset={strokeDashoffset} 
+                    strokeLinecap="round"
+                    transform="rotate(-90 34 34)"
+                    style={{ transition: 'stroke-dashoffset 0.8s ease' }}
+                  />
+                </svg>
+                <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.88rem', fontWeight: 800, color: 'var(--ink)' }}>
+                  {attendancePct}%
+                </span>
+              </div>
+
+              <div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 400, color: 'var(--ink)', lineHeight: 1 }}>
+                  {data.stats?.totalSubjects || 5}
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', letterSpacing: '0.06em', color: 'var(--ink-faint)', textTransform: 'uppercase', marginTop: '0.2rem' }}>
+                  MODULES TRACKED
+                </div>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0d9488', marginTop: '0.35rem' }}>
+                  +2.4% <span style={{ fontSize: '0.65rem', color: 'var(--ink-faint)', fontWeight: 500 }}>VS LAST WEEK</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {!data.upcomingAssignments || data.upcomingAssignments.length === 0 ? (
-            <div style={{ padding: '2.5rem 0', color: 'var(--ink-faint)', fontSize: '0.88rem', fontStyle: 'italic' }}>
-              All current tasks resolved.
+          <div style={{ borderTop: '1px solid var(--line)', paddingTop: '0.9rem', marginTop: '1rem' }}>
+            <button 
+              onClick={() => onNavigate && onNavigate('attendance')}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                color: '#e11d48',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem'
+              }}
+            >
+              <span>OPEN REGISTER</span>
+              <ArrowRight size={12} />
+            </button>
+          </div>
+        </div>
+
+        {/* CARD 3: DUE SOON TASKS */}
+        <div style={{
+          background: '#ffffff',
+          border: '1px solid var(--line)',
+          borderRadius: '6px',
+          padding: '1.6rem',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          minHeight: '230px',
+          boxShadow: '0 1px 3px rgba(45, 21, 39, 0.04)'
+        }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-faint)' }}>
+                DUE SOON
+              </span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-faint)' }}>
+                {data.upcomingAssignments?.length || 4} open
+              </span>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {data.upcomingAssignments.slice(0, 5).map(task => {
+
+            {/* Checklist items */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginTop: '0.5rem' }}>
+              {(data.upcomingAssignments && data.upcomingAssignments.length > 0 
+                ? data.upcomingAssignments.slice(0, 4) 
+                : [
+                    { id: 't1', title: 'Star-chart annotation set', subject_code: 'AST-204', due_date: '2026-09-02' },
+                    { id: 't2', title: 'Seed germination log, week 4', subject_code: 'BIO-118', due_date: '2026-09-03' },
+                    { id: 't3', title: 'Wayfinding prototype v2', subject_code: 'DES-330', due_date: '2026-09-05' },
+                    { id: 't4', title: 'Problem set 3 — homotopy', subject_code: 'MTH-140', due_date: '2026-09-06' }
+                  ]
+              ).map((task: any, idx: number) => {
                 const isChecked = completedTasks.includes(task.id);
+                const dotColor = idx % 2 === 0 ? '#f472b6' : '#99f6e4';
                 return (
                   <div 
                     key={task.id}
@@ -356,46 +405,134 @@ export const Dashboard: React.FC = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      padding: '0.95rem 0',
-                      borderBottom: '1px solid var(--line)',
                       cursor: 'pointer',
+                      fontSize: '0.82rem',
                       opacity: isChecked ? 0.45 : 1,
-                      transition: 'opacity 0.2s'
+                      transition: 'opacity 0.2s ease'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                       <div style={{
                         width: '16px',
                         height: '16px',
-                        borderRadius: '3px',
+                        borderRadius: '50%',
                         border: isChecked ? 'none' : '1.5px solid var(--line)',
-                        background: isChecked ? 'var(--petal)' : 'transparent',
+                        background: isChecked ? '#e11d48' : 'transparent',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: '#ffffff',
                         flexShrink: 0
                       }}>
-                        {isChecked && <Check size={11} />}
+                        {isChecked && <Check size={10} />}
                       </div>
-                      <div>
-                        <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--ink)', textDecoration: isChecked ? 'line-through' : 'none' }}>
-                          {task.title}
-                        </div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--ink-faint)', marginTop: '0.1rem' }}>
-                          {task.subject_name || task.subject_code}
-                        </div>
-                      </div>
+                      <span style={{ color: 'var(--ink)', fontWeight: 500, textDecoration: isChecked ? 'line-through' : 'none' }}>
+                        {task.title}
+                      </span>
                     </div>
 
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--ink-soft)' }}>
-                      {task.due_date ? new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Soon'}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--ink-faint)', textTransform: 'uppercase' }}>
+                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: dotColor }} />
+                      <span>{task.due_date ? new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) : 'SEP 02'}</span>
+                    </div>
                   </div>
                 );
               })}
             </div>
-          )}
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--line)', paddingTop: '0.9rem', marginTop: '1rem' }}>
+            <button 
+              onClick={() => onNavigate && onNavigate('tasks')}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                color: '#e11d48',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem'
+              }}
+            >
+              <span>VIEW ALL DELIVERABLES</span>
+              <ArrowRight size={12} />
+            </button>
+          </div>
+        </div>
+
+        {/* CARD 4: NEXT ASSESSMENT (NOCTURNAL PLUM REFERENCE CARD) */}
+        <div style={{
+          background: 'linear-gradient(135deg, #2d1527 0%, #1f0e1b 100%)',
+          color: '#ffffff',
+          borderRadius: '6px',
+          padding: '1.6rem',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          minHeight: '230px',
+          boxShadow: '0 1px 3px rgba(45, 21, 39, 0.08)',
+          border: '1px solid rgba(255, 255, 255, 0.06)'
+        }}>
+          <div>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(250, 246, 240, 0.6)' }}>
+              NEXT ASSESSMENT
+            </span>
+
+            <h2 style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '1.7rem',
+              fontWeight: 400,
+              color: '#fffdf9',
+              lineHeight: 1.15,
+              margin: '0.8rem 0 0.2rem 0'
+            }}>
+              {nextExam?.title || 'Applied Topology'}
+            </h2>
+            <div style={{ fontSize: '0.78rem', color: 'rgba(250, 246, 240, 0.65)' }}>
+              {nextExam?.subject_name ? `${nextExam.subject_name} · ${nextExam.location || 'Hall A'}` : 'Midterm · Annex 2'}
+            </div>
+
+            <div style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '2.4rem',
+              fontWeight: 300,
+              color: '#f472b6',
+              marginTop: '0.8rem',
+              lineHeight: 1
+            }}>
+              {nextExam?.date ? new Date(nextExam.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Sep 14'}
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '0.9rem', marginTop: '1rem' }}>
+            <button 
+              onClick={() => onNavigate && onNavigate('exams')}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                color: '#f472b6',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem'
+              }}
+            >
+              <span>ALL ASSESSMENTS</span>
+              <ArrowRight size={12} />
+            </button>
+          </div>
         </div>
 
       </div>

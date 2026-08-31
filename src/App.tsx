@@ -567,7 +567,7 @@ const AppContent: React.FC = () => {
   const renderActiveView = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <div className="page-dashboard"><Dashboard /></div>;
+        return <div className="page-dashboard"><Dashboard onNavigate={(tab) => setActiveTab(tab as ActiveTab)} /></div>;
       case 'timetable':
         return <div className="page-timetable"><Timetable /></div>;
       case 'attendance':
@@ -583,7 +583,7 @@ const AppContent: React.FC = () => {
       case 'campus-xp':
         return <div className="page-campusxp"><CampusXP /></div>;
       default:
-        return <div className="page-dashboard"><Dashboard /></div>;
+        return <div className="page-dashboard"><Dashboard onNavigate={(tab) => setActiveTab(tab as ActiveTab)} /></div>;
     }
   };
 

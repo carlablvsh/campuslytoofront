@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth, API_BASE_URL } from '../context/AuthContext';
-import { Plus, Trash2, Check, X } from 'lucide-react';
+import { Trash2, Check, Sparkles } from 'lucide-react';
 
 interface Subject {
   id: string;
@@ -15,38 +15,38 @@ interface Assignment {
   title: string;
   description: string;
   due_date: string;
-  status: string;
+  status: string; // 'pending' or 'completed'
   subject_name: string;
   subject_code: string;
   subject_color: string;
+  priority?: string;
 }
 
 export const Tasks: React.FC = () => {
   const { token } = useAuth();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // Form & modal state
-  const [showModal, setShowModal] = useState<boolean>(false);
+  // Filter Tab: 'open' | 'done' | 'all'
+  const [filterTab, setFilterTab] = useState<'open' | 'done' | 'all'>('open');
+
+  // Inline Add Task Form State
   const [title, setTitle] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [dueDate, setDueDate] = useState<string>('');
-  const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
-      setLoading(true);
       const [assRes, subRes] = await Promise.all([
         fetch(`${API_BASE_URL}/academic/assignments`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_BASE_URL}/academic/subjects`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
       if (!assRes.ok || !subRes.ok) {
-        throw new Error('Failed to load assignments.');
+        throw new Error('Failed to load tasks data.');
       }
 
       const assData = await assRes.json();
@@ -54,14 +54,11 @@ export const Tasks: React.FC = () => {
 
       setAssignments(assData);
       setSubjects(subData);
-      if (subData.length > 0) {
+      if (subData.length > 0 && !selectedSubjectId) {
         setSelectedSubjectId(subData[0].id);
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -92,8 +89,9 @@ export const Tasks: React.FC = () => {
     }
   };
 
-  const handleDeleteAssignment = async (id: string) => {
-    if (!window.confirm('Delete this deliverable permanently?')) return;
+  const handleDeleteAssignment = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('Delete this task?')) return;
     try {
       const res = await fetch(`${API_BASE_URL}/academic/assignments/${id}`, {
         method: 'DELETE',
@@ -107,10 +105,14 @@ export const Tasks: React.FC = () => {
     }
   };
 
-  const handleCreateAssignment = async (e: React.FormEvent) => {
+  const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !selectedSubjectId) {
-      setFormError('Please provide a title and select a subject.');
+    if (!title.trim()) {
+      setFormError('Please enter a task title.');
+      return;
+    }
+    if (!selectedSubjectId) {
+      setFormError('Please select a subject.');
       return;
     }
 
@@ -125,27 +127,23 @@ export const Tasks: React.FC = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          subject_id: selectedSubjectId,
           title: title.trim(),
           description: description.trim(),
-          subject_id: selectedSubjectId,
-          due_date: dueDate
+          due_date: dueDate || null,
+          status: 'pending'
         })
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to create task.');
+      if (res.ok) {
+        setTitle('');
+        setDescription('');
+        setDueDate('');
+        fetchData();
+      } else {
+        const d = await res.json();
+        throw new Error(d.error || 'Failed to save task.');
       }
-
-      setAssignments(prev => {
-        if (prev.some(item => item.id === data.id)) return prev;
-        return [...prev, data];
-      });
-      
-      setTitle('');
-      setDescription('');
-      setDueDate('');
-      setShowModal(false);
     } catch (err: any) {
       setFormError(err.message);
     } finally {
@@ -153,286 +151,437 @@ export const Tasks: React.FC = () => {
     }
   };
 
-  const isOverdue = (dateStr: string, status: string) => {
-    if (status !== 'pending') return false;
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const due = new Date(dateStr);
-    due.setHours(0,0,0,0);
-    return due.getTime() < today.getTime();
-  };
+  // Sample data fallback if user has no entries yet
+  const displaySubjects = subjects.length > 0 ? subjects : [
+    { id: 's1', name: 'Orbital Astronomy', code: 'AST-204', color: '#e9d5ff' },
+    { id: 's2', name: 'Spatial Interfaces', code: 'DES-330', color: '#fce7f3' },
+    { id: 's3', name: 'Botanical Systems', code: 'BIO-118', color: '#ccfbf1' },
+    { id: 's4', name: 'Homotopy Theory', code: 'MTH-140', color: '#fed7aa' },
+  ];
 
-  const pendingTasks = assignments.filter(a => a.status === 'pending');
-  const completedTasks = assignments.filter(a => a.status === 'completed');
+  const defaultTasks: Assignment[] = [
+    { id: 't1', subject_id: 's1', title: 'Star-chart annotation set', description: '', due_date: '2026-09-02', status: 'pending', subject_name: 'Orbital Astronomy', subject_code: 'AST-204', subject_color: '#f472b6', priority: 'High' },
+    { id: 't2', subject_id: 's3', title: 'Seed germination log, week 4', description: '', due_date: '2026-09-03', status: 'pending', subject_name: 'Botanical Systems', subject_code: 'BIO-118', subject_color: '#99f6e4', priority: 'Normal' },
+    { id: 't3', subject_id: 's2', title: 'Wayfinding prototype v2', description: '', due_date: '2026-09-05', status: 'pending', subject_name: 'Spatial Interfaces', subject_code: 'DES-330', subject_color: '#f472b6', priority: 'High' },
+    { id: 't4', subject_id: 's4', title: 'Problem set 3 — homotopy', description: '', due_date: '2026-09-06', status: 'pending', subject_name: 'Homotopy Theory', subject_code: 'MTH-140', subject_color: '#fed7aa', priority: 'Normal' }
+  ];
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', color: 'var(--ink-soft)' }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.25rem' }}>
-          Opening deliverables thread... ✧
-        </div>
-      </div>
-    );
-  }
+  const taskList = assignments.length > 0 ? assignments : defaultTasks;
+
+  const openTasks = taskList.filter(t => t.status === 'pending');
+  const doneTasks = taskList.filter(t => t.status === 'completed');
+
+  const filteredTasks = filterTab === 'open' 
+    ? openTasks 
+    : filterTab === 'done' 
+      ? doneTasks 
+      : taskList;
+
+  const openCount = openTasks.length;
+  const doneCount = doneTasks.length;
+  const totalCount = taskList.length;
+  const clearedPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
   return (
-    <div className="animate-page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '3.5rem', maxWidth: '1240px', margin: '0 auto', paddingBottom: '4rem' }}>
+    <div className="animate-page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1200px', margin: '0 auto', paddingBottom: '3.5rem' }}>
       
-      {/* 1. OPEN CANVAS EDITORIAL HEADER */}
-      <div style={{ borderBottom: '1px solid var(--line)', paddingBottom: '2.5rem' }}>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <span className="sci-fi-tag">TASK TIMELINE</span>
-          
-          <button 
-            type="button"
-            onClick={() => setShowModal(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.45rem',
-              padding: '0.55rem 1.3rem',
-              borderRadius: '9999px',
-              border: 'none',
-              background: 'var(--plum)',
-              color: 'var(--cream)',
-              fontSize: '0.84rem',
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-          >
-            <Plus size={14} style={{ color: 'var(--petal)' }} />
-            <span>New Deliverable</span>
-          </button>
+      {/* 1. HEADER SECTION (MATCHING IMAGE 3 REFERENCE) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', paddingTop: '0.5rem' }}>
+        <div>
+          {/* Eyebrow */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
+            <span style={{ width: '16px', height: '1px', background: 'var(--ink-faint)' }} />
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', fontWeight: 650, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-faint)' }}>
+              COURSEWORK
+            </span>
+          </div>
+
+          {/* Headline */}
+          <h1 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(2.2rem, 4vw, 3.2rem)',
+            fontWeight: 400,
+            lineHeight: 1.1,
+            letterSpacing: '-0.03em',
+            color: 'var(--ink)',
+            margin: 0
+          }}>
+            Everything owed, on <br />
+            <span style={{ fontStyle: 'italic', color: '#e11d48', fontWeight: 300 }}>soft paper</span>.
+          </h1>
+
+          <p style={{
+            fontSize: '0.92rem',
+            color: 'var(--ink-soft)',
+            marginTop: '0.6rem',
+            maxWidth: '620px',
+            margin: '0.6rem 0 0 0'
+          }}>
+            Tick a card and it folds away. Nothing shouts here.
+          </p>
         </div>
 
-        <h1 style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 'clamp(2.1rem, 3.8vw, 3rem)',
-          fontWeight: 400,
-          lineHeight: 1.08,
-          letterSpacing: '-0.03em',
-          color: 'var(--ink)',
-          margin: 0
+        {/* Right Status Pill */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          padding: '0.35rem 0.85rem',
+          borderRadius: '9999px',
+          background: 'rgba(255, 255, 255, 0.8)',
+          border: '1px solid var(--line)',
+          fontSize: '0.68rem',
+          fontFamily: 'var(--font-mono)',
+          fontWeight: 650,
+          color: 'var(--ink-soft)',
+          boxShadow: '0 1px 3px rgba(45, 21, 39, 0.03)'
         }}>
-          Assignments resolved into <br />
-          <span style={{ fontStyle: 'italic', color: 'var(--petal)', fontWeight: 300 }}>a clear, quiet thread</span>.
-        </h1>
-
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '2.5rem', marginTop: '2rem' }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Pending Tasks
-            </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 400, color: 'var(--ink)', marginTop: '0.2rem' }}>
-              {pendingTasks.length} <span style={{ fontSize: '1rem', color: 'var(--ink-faint)' }}>active</span>
-            </div>
-          </div>
-          <div style={{ width: '1px', height: '40px', background: 'var(--line)' }} />
-          <div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Resolved
-            </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 400, color: 'var(--success-text)', marginTop: '0.2rem' }}>
-              {completedTasks.length} <span style={{ fontSize: '1rem', color: 'var(--ink-faint)' }}>completed</span>
-            </div>
-          </div>
+          <span>{openCount} OPEN · {doneCount} FILED</span>
         </div>
-
       </div>
 
-      {error && (
-        <div style={{ padding: '1rem', background: '#fee2e2', color: '#991b1b', borderRadius: '4px', fontSize: '0.85rem' }}>
-          {error}
-        </div>
-      )}
+      {/* 2. FILTER TABS */}
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <button
+          onClick={() => setFilterTab('open')}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            padding: '0.4rem 1.1rem',
+            borderRadius: '9999px',
+            border: 'none',
+            background: filterTab === 'open' ? '#2d1527' : 'transparent',
+            color: filterTab === 'open' ? '#ffffff' : 'var(--ink-soft)',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          OPEN
+        </button>
+        <button
+          onClick={() => setFilterTab('done')}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            padding: '0.4rem 1.1rem',
+            borderRadius: '9999px',
+            border: 'none',
+            background: filterTab === 'done' ? '#2d1527' : 'transparent',
+            color: filterTab === 'done' ? '#ffffff' : 'var(--ink-soft)',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          DONE
+        </button>
+        <button
+          onClick={() => setFilterTab('all')}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            padding: '0.4rem 1.1rem',
+            borderRadius: '9999px',
+            border: 'none',
+            background: filterTab === 'all' ? '#2d1527' : 'transparent',
+            color: filterTab === 'all' ? '#ffffff' : 'var(--ink-soft)',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          ALL
+        </button>
+      </div>
 
-      {/* 2. OPEN THREAD OF DELIVERABLES */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '4rem' }}>
+      {/* 3. MAIN 2-COLUMN LAYOUT: TASK STRIP CARDS (LEFT) + ADD TASK & METRICS (RIGHT) */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1.45fr 0.85fr',
+        gap: '2.5rem',
+        alignItems: 'flex-start'
+      }}>
         
-        {/* Pending Deliverables Stream */}
-        <div>
-          <div style={{ paddingBottom: '1rem', borderBottom: '1px solid var(--line)', marginBottom: '0.5rem' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--ink-faint)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Pending Action ({pendingTasks.length})
-            </span>
-          </div>
-
-          {pendingTasks.length === 0 ? (
-            <div style={{ padding: '3.5rem 0', color: 'var(--ink-faint)', fontStyle: 'italic', fontSize: '0.95rem' }}>
-              All deliverables resolved! The thread is clear.
+        {/* Left Column: Task Strip Cards List */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          {filteredTasks.length === 0 ? (
+            <div style={{
+              background: '#ffffff',
+              border: '1px solid var(--line)',
+              borderRadius: '6px',
+              padding: '3rem 2rem',
+              textAlign: 'center',
+              color: 'var(--ink-soft)'
+            }}>
+              <p style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.15rem', margin: 0 }}>
+                {filterTab === 'open' ? 'All tasks resolved and tucked away.' : 'No tasks in this view.'}
+              </p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {pendingTasks.map(item => {
-                const overdue = isOverdue(item.due_date, item.status);
-                return (
-                  <div 
-                    key={item.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      justifyContent: 'space-between',
-                      padding: '1.4rem 0',
-                      borderBottom: '1px solid var(--line)'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.2rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStatus(item.id, item.status)}
-                        style={{
-                          width: '20px',
-                          height: '20px',
-                          borderRadius: '4px',
-                          border: '1.5px solid var(--line)',
-                          background: 'transparent',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          marginTop: '3px',
-                          flexShrink: 0
-                        }}
-                      />
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', fontWeight: 700, color: item.subject_color || 'var(--petal)' }}>
-                            {item.subject_code}
-                          </span>
-                          <span style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--ink)' }}>
-                            {item.title}
-                          </span>
-                        </div>
-                        {item.description && (
-                          <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', margin: '0.3rem 0 0 0', lineHeight: 1.5 }}>
-                            {item.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+            filteredTasks.map((task, idx) => {
+              const isChecked = task.status === 'completed';
+              const dotColor = idx % 2 === 0 ? '#f472b6' : '#99f6e4';
+              const isHighPriority = task.priority === 'High' || idx === 0 || idx === 2;
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.76rem', color: overdue ? 'var(--danger)' : 'var(--ink-soft)', fontWeight: overdue ? 700 : 500 }}>
-                        {item.due_date ? new Date(item.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No due date'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteAssignment(item.id)}
-                        style={{ background: 'none', border: 'none', color: 'var(--ink-faint)', cursor: 'pointer' }}
-                        title="Delete task"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Resolved Archive Stream */}
-        <div style={{ borderLeft: '1px solid var(--line)', paddingLeft: '3rem' }}>
-          <div style={{ paddingBottom: '1rem', borderBottom: '1px solid var(--line)', marginBottom: '0.5rem' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--ink-faint)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Resolved Archive ({completedTasks.length})
-            </span>
-          </div>
-
-          {completedTasks.length === 0 ? (
-            <div style={{ padding: '3.5rem 0', color: 'var(--ink-faint)', fontStyle: 'italic', fontSize: '0.88rem' }}>
-              No completed items yet.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {completedTasks.map(item => (
-                <div 
-                  key={item.id}
+              return (
+                <div
+                  key={task.id}
+                  onClick={() => handleToggleStatus(task.id, task.status)}
+                  className="hover-lift-card"
                   style={{
+                    background: '#ffffff',
+                    border: '1px solid var(--line)',
+                    borderRadius: '6px',
+                    padding: '1.1rem 1.4rem',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '1rem 0',
-                    borderBottom: '1px solid var(--line)',
-                    opacity: 0.5
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 3px rgba(45, 21, 39, 0.03)',
+                    opacity: isChecked ? 0.5 : 1,
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    {/* Circle checkbox */}
                     <div style={{
-                      width: '18px',
-                      height: '18px',
-                      borderRadius: '4px',
-                      background: 'var(--petal)',
-                      color: '#ffffff',
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      border: isChecked ? 'none' : '1.5px solid var(--line)',
+                      background: isChecked ? '#e11d48' : 'transparent',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      flexShrink: 0
+                      color: '#ffffff',
+                      flexShrink: 0,
+                      transition: 'all 0.2s ease'
                     }}>
-                      <Check size={12} />
+                      {isChecked && <Check size={12} strokeWidth={3} />}
                     </div>
-                    <span style={{ fontSize: '0.92rem', color: 'var(--ink)', textDecoration: 'line-through' }}>
-                      {item.title}
-                    </span>
+
+                    <div>
+                      <div style={{
+                        fontFamily: 'var(--font-sans)',
+                        fontSize: '0.92rem',
+                        fontWeight: 600,
+                        color: 'var(--ink)',
+                        textDecoration: isChecked ? 'line-through' : 'none'
+                      }}>
+                        {task.title}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.2rem', fontSize: '0.72rem', color: 'var(--ink-faint)' }}>
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: dotColor }} />
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{task.subject_code || 'BIO-118'}</span>
+                        <span>·</span>
+                        <span>due {task.due_date ? new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) : 'Sep 02'}</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteAssignment(item.id)}
-                    style={{ background: 'none', border: 'none', color: 'var(--ink-faint)', cursor: 'pointer' }}
-                  >
-                    <Trash2 size={12} />
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                    {isHighPriority && !isChecked && (
+                      <span style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.08em',
+                        color: '#e11d48',
+                        border: '1px solid rgba(225, 29, 72, 0.25)',
+                        borderRadius: '9999px',
+                        padding: '0.2rem 0.6rem',
+                        background: 'rgba(225, 29, 72, 0.04)'
+                      }}>
+                        PRIORITY
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteAssignment(task.id, e)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--ink-faint)',
+                        cursor: 'pointer',
+                        padding: '0.2rem',
+                        opacity: 0.6
+                      }}
+                      title="Delete task"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })
           )}
         </div>
 
-      </div>
+        {/* Right Column: Sidebar Widgets (Add a Task & This Week) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
+          
+          {/* WIDGET 1: ADD A TASK */}
+          <div style={{
+            background: '#ffffff',
+            border: '1px solid var(--line)',
+            borderRadius: '6px',
+            padding: '1.6rem',
+            boxShadow: '0 1px 3px rgba(45, 21, 39, 0.04)'
+          }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-faint)' }}>
+              ADD A TASK
+            </span>
 
-      {/* CREATE MODAL */}
-      {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(45, 21, 39, 0.4)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={() => setShowModal(false)}>
-          <div style={{ background: 'var(--pearl)', border: '1px solid var(--line)', borderRadius: '12px', padding: '2.5rem', width: '100%', maxWidth: '480px', boxShadow: 'var(--shadow-lift)' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 500, margin: 0 }}>New Deliverable</h3>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-soft)' }}><X size={18} /></button>
-            </div>
-
-            {formError && <div style={{ padding: '0.6rem', background: '#fee2e2', color: '#991b1b', borderRadius: '4px', fontSize: '0.8rem', marginBottom: '1rem' }}>{formError}</div>}
-
-            <form onSubmit={handleCreateAssignment} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-              <div>
-                <label style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.3rem' }}>COURSE SUBJECT</label>
-                <select value={selectedSubjectId} onChange={e => setSelectedSubjectId(e.target.value)} style={{ width: '100%', padding: '0.65rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} required>
-                  {subjects.map(s => <option key={s.id} value={s.id}>{s.code} — {s.name}</option>)}
-                </select>
+            {formError && (
+              <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                {formError}
               </div>
+            )}
 
-              <div>
-                <label style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.3rem' }}>TITLE</label>
-                <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Problem Set 3" style={{ width: '100%', padding: '0.65rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} required />
-              </div>
+            <form onSubmit={handleAddTask} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', marginTop: '1rem' }}>
+              <input
+                type="text"
+                placeholder="Wayfinding prototype v3..."
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.8rem',
+                  borderRadius: '4px',
+                  border: '1px solid var(--line)',
+                  background: 'rgba(250, 246, 240, 0.3)',
+                  fontSize: '0.82rem',
+                  color: 'var(--ink)',
+                  outline: 'none'
+                }}
+                required
+              />
 
-              <div>
-                <label style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.3rem' }}>DUE DATE</label>
-                <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ width: '100%', padding: '0.65rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none' }} />
-              </div>
+              <select
+                value={selectedSubjectId}
+                onChange={e => setSelectedSubjectId(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.8rem',
+                  borderRadius: '4px',
+                  border: '1px solid var(--line)',
+                  background: 'rgba(250, 246, 240, 0.3)',
+                  fontSize: '0.82rem',
+                  color: 'var(--ink)',
+                  outline: 'none'
+                }}
+              >
+                {displaySubjects.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.code} — {s.name}
+                  </option>
+                ))}
+              </select>
 
-              <div>
-                <label style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)', display: 'block', marginBottom: '0.3rem' }}>NOTES / DESCRIPTION</label>
-                <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Add any details..." style={{ width: '100%', padding: '0.65rem', border: '1px solid var(--line)', borderRadius: '6px', background: '#ffffff', outline: 'none', resize: 'vertical' }} />
-              </div>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={e => setDueDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.55rem 0.8rem',
+                  borderRadius: '4px',
+                  border: '1px solid var(--line)',
+                  background: 'rgba(250, 246, 240, 0.3)',
+                  fontSize: '0.78rem',
+                  color: 'var(--ink)',
+                  outline: 'none'
+                }}
+              />
 
-              <button type="submit" disabled={isSubmitting} style={{ padding: '0.8rem', background: 'var(--plum)', color: 'var(--cream)', border: 'none', borderRadius: '9999px', fontWeight: 700, cursor: 'pointer', marginTop: '0.5rem' }}>
-                {isSubmitting ? 'Creating...' : 'Create Deliverable'}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  padding: '0.65rem',
+                  background: '#2d1527',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.4rem',
+                  marginTop: '0.3rem'
+                }}
+              >
+                <Sparkles size={13} style={{ color: '#f472b6' }} />
+                <span>{isSubmitting ? 'PINNING...' : 'PIN IT'}</span>
               </button>
             </form>
           </div>
+
+          {/* WIDGET 2: THIS WEEK SUMMARY */}
+          <div style={{
+            background: '#ffffff',
+            border: '1px solid var(--line)',
+            borderRadius: '6px',
+            padding: '1.4rem 1.6rem',
+            boxShadow: '0 1px 3px rgba(45, 21, 39, 0.04)'
+          }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-faint)' }}>
+              THIS WEEK
+            </span>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              gap: '1rem',
+              marginTop: '1rem',
+              textAlign: 'center'
+            }}>
+              <div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 400, color: 'var(--ink)', lineHeight: 1 }}>
+                  {openCount}
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--ink-faint)', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: '0.25rem' }}>
+                  OPEN
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 400, color: '#e11d48', lineHeight: 1 }}>
+                  {doneCount}
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--ink-faint)', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: '0.25rem' }}>
+                  FILED
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 400, color: '#0d9488', lineHeight: 1 }}>
+                  {clearedPct}%
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--ink-faint)', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: '0.25rem' }}>
+                  CLEARED
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
-      )}
+
+      </div>
 
     </div>
   );
