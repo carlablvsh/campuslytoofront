@@ -83,7 +83,7 @@ export const Timetable: React.FC = () => {
   const [subjectCode, setSubjectCode] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>(PRESET_PASTELS[0]);
 
-  // Include Weekend Toggle if needed
+  // Include Weekend Toggle if student has weekend classes in DB
   const hasWeekendClasses = classes.some(c => c.day_of_week === 0 || c.day_of_week === 6);
 
   const activeDays = hasWeekendClasses ? [
@@ -244,7 +244,7 @@ export const Timetable: React.FC = () => {
     return h + m / 60;
   };
 
-  // Compute total weekly stats
+  // Compute total weekly stats purely from real database classes
   const totalSessions = classes.length;
   let totalHours = 0;
   classes.forEach(c => {
@@ -258,39 +258,17 @@ export const Timetable: React.FC = () => {
   const START_HOUR = 8;   // 08:00
   const TOTAL_HOURS = 10; // 08:00 to 18:00
 
-  // Default sample subjects/classes if fresh account
-  const displaySubjects = subjects.length > 0 ? subjects : [
-    { id: 's1', name: 'Orbital Astronomy', code: 'AST-204', target_attendance: 75, color: '#e9d5ff', instructor: 'Dr. Ito' },
-    { id: 's2', name: 'Spatial Interfaces', code: 'DES-330', target_attendance: 75, color: '#fce7f3', instructor: 'M. Lindqvist' },
-    { id: 's3', name: 'Botanical Systems', code: 'BIO-118', target_attendance: 75, color: '#ccfbf1', instructor: 'Prof. Aluko' },
-    { id: 's4', name: 'Applied Topology', code: 'MTH-140', target_attendance: 75, color: '#fed7aa', instructor: 'Dr. Okafor' },
-    { id: 's5', name: 'Future Poetics', code: 'LIT-210', target_attendance: 75, color: '#ffe4e6', instructor: 'Dr. Vance' }
-  ];
-
-  const displayClasses = classes.length > 0 ? classes : [
-    { id: 'c1', subject_id: 's1', day_of_week: 1, start_time: '09:00', end_time: '10:30', location: 'Dome 3', subject_name: 'Orbital Astronomy', subject_code: 'AST-204', subject_color: '#e9d5ff' },
-    { id: 'c2', subject_id: 's2', day_of_week: 1, start_time: '13:30', end_time: '15:00', location: 'Studio 12', subject_name: 'Spatial Interfaces', subject_code: 'DES-330', subject_color: '#fce7f3' },
-    { id: 'c3', subject_id: 's3', day_of_week: 2, start_time: '10:00', end_time: '11:30', location: 'Greenhouse W', subject_name: 'Botanical Systems', subject_code: 'BIO-118', subject_color: '#ccfbf1' },
-    { id: 'c4', subject_id: 's4', day_of_week: 2, start_time: '15:00', end_time: '16:30', location: 'Annex 2', subject_name: 'Applied Topology', subject_code: 'MTH-140', subject_color: '#fed7aa' },
-    { id: 'c5', subject_id: 's5', day_of_week: 3, start_time: '09:30', end_time: '11:00', location: 'Reading Hall', subject_name: 'Future Poetics', subject_code: 'LIT-210', subject_color: '#ffe4e6' },
-    { id: 'c6', subject_id: 's2', day_of_week: 3, start_time: '14:30', end_time: '16:00', location: 'Studio 12', subject_name: 'Spatial Interfaces', subject_code: 'DES-330', subject_color: '#fce7f3' },
-    { id: 'c7', subject_id: 's1', day_of_week: 4, start_time: '11:00', end_time: '12:30', location: 'Dome 3', subject_name: 'Orbital Astronomy', subject_code: 'AST-204', subject_color: '#e9d5ff' },
-    { id: 'c8', subject_id: 's4', day_of_week: 4, start_time: '14:30', end_time: '16:00', location: 'Annex 2', subject_name: 'Applied Topology', subject_code: 'MTH-140', subject_color: '#fed7aa' },
-    { id: 'c9', subject_id: 's3', day_of_week: 5, start_time: '09:30', end_time: '11:00', location: 'Greenhouse W', subject_name: 'Botanical Systems', subject_code: 'BIO-118', subject_color: '#ccfbf1' },
-    { id: 'c10', subject_id: 's5', day_of_week: 5, start_time: '12:30', end_time: '14:00', location: 'Reading Hall', subject_name: 'Future Poetics', subject_code: 'LIT-210', subject_color: '#ffe4e6' },
-  ];
-
   return (
     <div className="animate-page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1220px', margin: '0 auto', paddingBottom: '3.5rem' }}>
       
-      {/* 1. HEADER (MATCHING IMAGE 2 REFERENCE) */}
+      {/* 1. HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.5rem', paddingTop: '0.5rem' }}>
         <div>
           {/* Eyebrow */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
             <span style={{ width: '16px', height: '1px', background: 'var(--ink-faint)' }} />
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', fontWeight: 650, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-faint)' }}>
-              WEEK 6 · AUTUMN TERM
+              TIMETABLE SCHEDULE
             </span>
           </div>
 
@@ -335,7 +313,7 @@ export const Timetable: React.FC = () => {
             color: 'var(--ink-soft)',
             boxShadow: '0 1px 3px rgba(45, 21, 39, 0.03)'
           }}>
-            <span>{totalSessions || 10} SESSIONS · {hoursFormatted || '14H 30M'}</span>
+            <span>{totalSessions} SESSIONS {totalHours > 0 ? `· ${hoursFormatted}` : ''}</span>
           </div>
 
           {/* Action Buttons */}
@@ -464,7 +442,7 @@ export const Timetable: React.FC = () => {
             </div>
           ))}
 
-          {/* Render Scheduled Class Blocks on Grid */}
+          {/* Render Scheduled Class Blocks purely from user's database records */}
           <div style={{
             position: 'absolute',
             top: 0,
@@ -476,7 +454,7 @@ export const Timetable: React.FC = () => {
             pointerEvents: 'none'
           }}>
             {activeDays.map(day => {
-              const dayClasses = displayClasses.filter(c => c.day_of_week === day.value);
+              const dayClasses = classes.filter(c => c.day_of_week === day.value);
               return (
                 <div key={day.value} style={{ position: 'relative', height: '100%', pointerEvents: 'none' }}>
                   {dayClasses.map(c => {
@@ -542,44 +520,55 @@ export const Timetable: React.FC = () => {
       {/* 3. ENROLLED SUBJECT SUMMARY STRIP BELOW GRID */}
       <div>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-faint)', marginBottom: '0.8rem' }}>
-          ENROLLED MODULES
+          ENROLLED MODULES ({subjects.length})
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '1rem'
-        }}>
-          {displaySubjects.map(s => (
-            <div 
-              key={s.id}
-              className="hover-lift-card"
-              style={{
-                background: '#ffffff',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                padding: '1rem 1.1rem',
-                boxShadow: '0 1px 3px rgba(45, 21, 39, 0.03)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.4rem'
-              }}
-            >
-              <div style={{ width: '24px', height: '3px', borderRadius: '2px', background: s.color || '#e9d5ff' }} />
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', fontWeight: 700, color: 'var(--ink-faint)', marginTop: '0.1rem' }}>
-                {s.code}
-              </div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.98rem', fontWeight: 600, color: 'var(--ink)' }}>
-                {s.name}
-              </div>
-              {s.instructor && (
-                <div style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>
-                  {s.instructor}
+        {subjects.length > 0 ? (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem'
+          }}>
+            {subjects.map(s => (
+              <div 
+                key={s.id}
+                className="hover-lift-card"
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--line)',
+                  borderRadius: '4px',
+                  padding: '1rem 1.1rem',
+                  boxShadow: '0 1px 3px rgba(45, 21, 39, 0.03)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.4rem'
+                }}
+              >
+                <div style={{ width: '24px', height: '3px', borderRadius: '2px', background: s.color || '#e9d5ff' }} />
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', fontWeight: 700, color: 'var(--ink-faint)', marginTop: '0.1rem' }}>
+                  {s.code}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.98rem', fontWeight: 600, color: 'var(--ink)' }}>
+                  {s.name}
+                </div>
+                {s.instructor && (
+                  <div style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>
+                    {s.instructor}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ padding: '2rem', background: '#ffffff', border: '1px solid var(--line)', borderRadius: '4px', textAlign: 'center', color: 'var(--ink-soft)' }}>
+            <p style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.05rem', margin: '0 0 0.5rem 0' }}>
+              No subjects added yet.
+            </p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--ink-faint)', margin: 0 }}>
+              Click "+ Subject" above to add your courses and start scheduling classes.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* MODAL: ADD / EDIT CLASS */}
@@ -642,7 +631,7 @@ export const Timetable: React.FC = () => {
                   required
                 >
                   <option value="" disabled>Select course...</option>
-                  {displaySubjects.map(s => (
+                  {subjects.map(s => (
                     <option key={s.id} value={s.id}>
                       {s.code} — {s.name}
                     </option>

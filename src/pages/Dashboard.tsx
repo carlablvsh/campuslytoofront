@@ -102,9 +102,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     return 'Good evening';
   };
 
-  const getTodayDayShort = () => {
-    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-    return days[new Date().getDay()];
+  const getTodayFormatted = () => {
+    return new Date().toLocaleDateString(undefined, { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    }).toUpperCase();
   };
 
   if (loading) {
@@ -135,7 +138,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         : `${classesCount} classes`;
 
   const nextClass = data.classesToday && data.classesToday.length > 0 ? data.classesToday[0] : null;
-  const attendancePct = Math.round(data.stats?.averageAttendance || 86);
+  const attendancePct = Math.round(data.stats?.averageAttendance || 0);
   const nextExam = data.nextExam || (data.upcomingExams && data.upcomingExams.length > 0 ? data.upcomingExams[0] : null);
 
   // SVG Gauge calculations
@@ -143,17 +146,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (attendancePct / 100) * circumference;
 
+  const upcomingAssignments = data.upcomingAssignments || [];
+
   return (
     <div className="animate-page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1180px', margin: '0 auto', paddingBottom: '3.5rem' }}>
       
-      {/* 1. HEADER SECTION (MATCHING IMAGE 1 REFERENCE) */}
+      {/* 1. HEADER SECTION */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', paddingTop: '0.5rem' }}>
         <div>
           {/* Eyebrow */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
             <span style={{ width: '16px', height: '1px', background: 'var(--ink-faint)' }} />
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', fontWeight: 650, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-faint)' }}>
-              {getTodayDayShort()} · WEEK 6 · AUTUMN TERM
+              {getTodayFormatted()}
             </span>
           </div>
 
@@ -167,7 +172,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             color: 'var(--ink)',
             margin: 0
           }}>
-            {getGreeting()}, {user?.username || 'Mira'}. <br />
+            {getGreeting()}, {user?.username || 'Student'}. <br />
             <span style={{ fontStyle: 'italic', color: '#e11d48', fontWeight: 300 }}>{classesWord}</span> and a soft afternoon.
           </h1>
         </div>
@@ -188,7 +193,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           boxShadow: '0 1px 3px rgba(45, 21, 39, 0.03)'
         }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
-          <span>CAMPUS CALM · 04</span>
+          <span>CAMPUS CALM</span>
         </div>
       </div>
 
@@ -218,14 +223,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 NEXT UP
               </span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-faint)' }}>
-                {nextClass ? `in ${nextClass.start_time}` : 'Completed'}
+                {nextClass ? `${nextClass.start_time}–${nextClass.end_time}` : 'Completed'}
               </span>
             </div>
 
             {nextClass ? (
               <>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.74rem', color: nextClass.subject_color || '#0d9488', fontWeight: 700, marginBottom: '0.2rem' }}>
-                  {nextClass.subject_code || 'BIO-118'}
+                  {nextClass.subject_code}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <h2 style={{
@@ -236,30 +241,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                     color: 'var(--ink)',
                     margin: '0 0 0.4rem 0'
                   }}>
-                    {nextClass.subject_name || 'Botanical Systems'}
+                    {nextClass.subject_name}
                   </h2>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.75 }}>
                     <path d="M12 2C8.5 7.5 4 10.5 4 14.5C4 18.5 7.5 22 12 22C16.5 22 20 18.5 20 14.5C20 10.5 15.5 7.5 12 2Z" fill="#f472b6" />
                   </svg>
                 </div>
                 <div style={{ fontSize: '0.82rem', color: 'var(--ink-soft)', marginTop: '0.2rem' }}>
-                  {nextClass.start_time}–{nextClass.end_time} · {nextClass.location || 'Greenhouse W'} {nextClass.instructor ? `· ${nextClass.instructor}` : ''}
+                  {nextClass.start_time}–{nextClass.end_time} {nextClass.location ? `· ${nextClass.location}` : ''} {nextClass.instructor ? `· ${nextClass.instructor}` : ''}
                 </div>
               </>
             ) : (
               <div style={{ padding: '1rem 0' }}>
                 <p style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.15rem', color: 'var(--ink)', margin: 0 }}>
-                  "All lectures concluded for today."
+                  "No lectures scheduled for today."
                 </p>
                 <p style={{ fontSize: '0.78rem', color: 'var(--ink-faint)', marginTop: '0.3rem' }}>
-                  Enjoy a restful, quiet evening.
+                  Enjoy your study sessions or open work time.
                 </p>
               </div>
             )}
           </div>
 
           {/* Schedule pills below */}
-          {data.classesToday.length > 0 && (
+          {data.classesToday.length > 0 ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', paddingTop: '1.2rem', borderTop: '1px solid var(--line)', marginTop: '1rem' }}>
               {data.classesToday.map((c, i) => (
                 <span 
@@ -278,6 +283,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   {c.start_time} · {c.subject_code}
                 </span>
               ))}
+            </div>
+          ) : (
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: '0.9rem', marginTop: '1rem' }}>
+              <button 
+                onClick={() => onNavigate && onNavigate('timetable')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  color: '#e11d48',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem'
+                }}
+              >
+                <span>VIEW TIMETABLE</span>
+                <ArrowRight size={12} />
+              </button>
             </div>
           )}
         </div>
@@ -325,13 +354,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
               <div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 400, color: 'var(--ink)', lineHeight: 1 }}>
-                  {data.stats?.totalSubjects || 5}
+                  {data.stats?.totalSubjects || 0}
                 </div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', letterSpacing: '0.06em', color: 'var(--ink-faint)', textTransform: 'uppercase', marginTop: '0.2rem' }}>
                   MODULES TRACKED
                 </div>
-                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0d9488', marginTop: '0.35rem' }}>
-                  +2.4% <span style={{ fontSize: '0.65rem', color: 'var(--ink-faint)', fontWeight: 500 }}>VS LAST WEEK</span>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: attendancePct >= 75 ? '#0d9488' : '#ef4444', marginTop: '0.35rem' }}>
+                  {attendancePct >= 75 ? '● Above Target' : '▲ Below Target'}
                 </div>
               </div>
             </div>
@@ -380,64 +409,62 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 DUE SOON
               </span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-faint)' }}>
-                {data.upcomingAssignments?.length || 4} open
+                {upcomingAssignments.length} open
               </span>
             </div>
 
             {/* Checklist items */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginTop: '0.5rem' }}>
-              {(data.upcomingAssignments && data.upcomingAssignments.length > 0 
-                ? data.upcomingAssignments.slice(0, 4) 
-                : [
-                    { id: 't1', title: 'Star-chart annotation set', subject_code: 'AST-204', due_date: '2026-09-02' },
-                    { id: 't2', title: 'Seed germination log, week 4', subject_code: 'BIO-118', due_date: '2026-09-03' },
-                    { id: 't3', title: 'Wayfinding prototype v2', subject_code: 'DES-330', due_date: '2026-09-05' },
-                    { id: 't4', title: 'Problem set 3 — homotopy', subject_code: 'MTH-140', due_date: '2026-09-06' }
-                  ]
-              ).map((task: any, idx: number) => {
-                const isChecked = completedTasks.includes(task.id);
-                const dotColor = idx % 2 === 0 ? '#f472b6' : '#99f6e4';
-                return (
-                  <div 
-                    key={task.id}
-                    onClick={() => toggleTask(task.id)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                      fontSize: '0.82rem',
-                      opacity: isChecked ? 0.45 : 1,
-                      transition: 'opacity 0.2s ease'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                      <div style={{
-                        width: '16px',
-                        height: '16px',
-                        borderRadius: '50%',
-                        border: isChecked ? 'none' : '1.5px solid var(--line)',
-                        background: isChecked ? '#e11d48' : 'transparent',
+              {upcomingAssignments.length > 0 ? (
+                upcomingAssignments.slice(0, 4).map((task, idx) => {
+                  const isChecked = completedTasks.includes(task.id);
+                  const dotColor = idx % 2 === 0 ? '#f472b6' : '#99f6e4';
+                  return (
+                    <div 
+                      key={task.id}
+                      onClick={() => toggleTask(task.id)}
+                      style={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#ffffff',
-                        flexShrink: 0
-                      }}>
-                        {isChecked && <Check size={10} />}
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        fontSize: '0.82rem',
+                        opacity: isChecked ? 0.45 : 1,
+                        transition: 'opacity 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0 }}>
+                        <div style={{
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '50%',
+                          border: isChecked ? 'none' : '1.5px solid var(--line)',
+                          background: isChecked ? '#e11d48' : 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#ffffff',
+                          flexShrink: 0
+                        }}>
+                          {isChecked && <Check size={10} />}
+                        </div>
+                        <span style={{ color: 'var(--ink)', fontWeight: 500, textDecoration: isChecked ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {task.title}
+                        </span>
                       </div>
-                      <span style={{ color: 'var(--ink)', fontWeight: 500, textDecoration: isChecked ? 'line-through' : 'none' }}>
-                        {task.title}
-                      </span>
-                    </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--ink-faint)', textTransform: 'uppercase' }}>
-                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: dotColor }} />
-                      <span>{task.due_date ? new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) : 'SEP 02'}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--ink-faint)', textTransform: 'uppercase', flexShrink: 0 }}>
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: dotColor }} />
+                        <span>{task.due_date ? new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) : 'Pending'}</span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <div style={{ padding: '1rem 0', color: 'var(--ink-faint)', fontSize: '0.82rem', fontStyle: 'italic' }}>
+                  No pending deliverables due.
+                </div>
+              )}
             </div>
           </div>
 
@@ -484,30 +511,50 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               NEXT ASSESSMENT
             </span>
 
-            <h2 style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '1.7rem',
-              fontWeight: 400,
-              color: '#fffdf9',
-              lineHeight: 1.15,
-              margin: '0.8rem 0 0.2rem 0'
-            }}>
-              {nextExam?.title || 'Applied Topology'}
-            </h2>
-            <div style={{ fontSize: '0.78rem', color: 'rgba(250, 246, 240, 0.65)' }}>
-              {nextExam?.subject_name ? `${nextExam.subject_name} · ${nextExam.location || 'Hall A'}` : 'Midterm · Annex 2'}
-            </div>
+            {nextExam ? (
+              <>
+                <h2 style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '1.7rem',
+                  fontWeight: 400,
+                  color: '#fffdf9',
+                  lineHeight: 1.15,
+                  margin: '0.8rem 0 0.2rem 0'
+                }}>
+                  {nextExam.title}
+                </h2>
+                <div style={{ fontSize: '0.78rem', color: 'rgba(250, 246, 240, 0.65)' }}>
+                  {nextExam.subject_name ? `${nextExam.subject_name}` : ''} {nextExam.location ? `· ${nextExam.location}` : ''}
+                </div>
 
-            <div style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '2.4rem',
-              fontWeight: 300,
-              color: '#f472b6',
-              marginTop: '0.8rem',
-              lineHeight: 1
-            }}>
-              {nextExam?.date ? new Date(nextExam.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Sep 14'}
-            </div>
+                <div style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '2.4rem',
+                  fontWeight: 300,
+                  color: '#f472b6',
+                  marginTop: '0.8rem',
+                  lineHeight: 1
+                }}>
+                  {nextExam.date ? new Date(nextExam.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Upcoming'}
+                </div>
+              </>
+            ) : (
+              <div style={{ padding: '1rem 0' }}>
+                <h2 style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '1.4rem',
+                  fontWeight: 400,
+                  color: '#fffdf9',
+                  lineHeight: 1.2,
+                  margin: '0.8rem 0 0.4rem 0'
+                }}>
+                  No upcoming assessments
+                </h2>
+                <p style={{ fontSize: '0.78rem', color: 'rgba(250, 246, 240, 0.6)', margin: 0 }}>
+                  All clear for the current cycle.
+                </p>
+              </div>
+            )}
           </div>
 
           <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '0.9rem', marginTop: '1rem' }}>

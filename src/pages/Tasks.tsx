@@ -151,41 +151,24 @@ export const Tasks: React.FC = () => {
     }
   };
 
-  // Sample data fallback if user has no entries yet
-  const displaySubjects = subjects.length > 0 ? subjects : [
-    { id: 's1', name: 'Orbital Astronomy', code: 'AST-204', color: '#e9d5ff' },
-    { id: 's2', name: 'Spatial Interfaces', code: 'DES-330', color: '#fce7f3' },
-    { id: 's3', name: 'Botanical Systems', code: 'BIO-118', color: '#ccfbf1' },
-    { id: 's4', name: 'Homotopy Theory', code: 'MTH-140', color: '#fed7aa' },
-  ];
-
-  const defaultTasks: Assignment[] = [
-    { id: 't1', subject_id: 's1', title: 'Star-chart annotation set', description: '', due_date: '2026-09-02', status: 'pending', subject_name: 'Orbital Astronomy', subject_code: 'AST-204', subject_color: '#f472b6', priority: 'High' },
-    { id: 't2', subject_id: 's3', title: 'Seed germination log, week 4', description: '', due_date: '2026-09-03', status: 'pending', subject_name: 'Botanical Systems', subject_code: 'BIO-118', subject_color: '#99f6e4', priority: 'Normal' },
-    { id: 't3', subject_id: 's2', title: 'Wayfinding prototype v2', description: '', due_date: '2026-09-05', status: 'pending', subject_name: 'Spatial Interfaces', subject_code: 'DES-330', subject_color: '#f472b6', priority: 'High' },
-    { id: 't4', subject_id: 's4', title: 'Problem set 3 — homotopy', description: '', due_date: '2026-09-06', status: 'pending', subject_name: 'Homotopy Theory', subject_code: 'MTH-140', subject_color: '#fed7aa', priority: 'Normal' }
-  ];
-
-  const taskList = assignments.length > 0 ? assignments : defaultTasks;
-
-  const openTasks = taskList.filter(t => t.status === 'pending');
-  const doneTasks = taskList.filter(t => t.status === 'completed');
+  const openTasks = assignments.filter(t => t.status === 'pending');
+  const doneTasks = assignments.filter(t => t.status === 'completed');
 
   const filteredTasks = filterTab === 'open' 
     ? openTasks 
     : filterTab === 'done' 
       ? doneTasks 
-      : taskList;
+      : assignments;
 
   const openCount = openTasks.length;
   const doneCount = doneTasks.length;
-  const totalCount = taskList.length;
+  const totalCount = assignments.length;
   const clearedPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
   return (
     <div className="animate-page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1200px', margin: '0 auto', paddingBottom: '3.5rem' }}>
       
-      {/* 1. HEADER SECTION (MATCHING IMAGE 3 REFERENCE) */}
+      {/* 1. HEADER SECTION */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', paddingTop: '0.5rem' }}>
         <div>
           {/* Eyebrow */}
@@ -323,12 +306,15 @@ export const Tasks: React.FC = () => {
               <p style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.15rem', margin: 0 }}>
                 {filterTab === 'open' ? 'All tasks resolved and tucked away.' : 'No tasks in this view.'}
               </p>
+              <p style={{ fontSize: '0.8rem', color: 'var(--ink-faint)', marginTop: '0.4rem' }}>
+                Use the form on the right to pin a new coursework deliverable.
+              </p>
             </div>
           ) : (
             filteredTasks.map((task, idx) => {
               const isChecked = task.status === 'completed';
               const dotColor = idx % 2 === 0 ? '#f472b6' : '#99f6e4';
-              const isHighPriority = task.priority === 'High' || idx === 0 || idx === 2;
+              const isHighPriority = task.priority === 'High';
 
               return (
                 <div
@@ -349,7 +335,7 @@ export const Tasks: React.FC = () => {
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0 }}>
                     {/* Circle checkbox */}
                     <div style={{
                       width: '20px',
@@ -367,27 +353,34 @@ export const Tasks: React.FC = () => {
                       {isChecked && <Check size={12} strokeWidth={3} />}
                     </div>
 
-                    <div>
+                    <div style={{ minWidth: 0 }}>
                       <div style={{
                         fontFamily: 'var(--font-sans)',
                         fontSize: '0.92rem',
                         fontWeight: 600,
                         color: 'var(--ink)',
-                        textDecoration: isChecked ? 'line-through' : 'none'
+                        textDecoration: isChecked ? 'line-through' : 'none',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
                       }}>
                         {task.title}
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.2rem', fontSize: '0.72rem', color: 'var(--ink-faint)' }}>
                         <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: dotColor }} />
-                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{task.subject_code || 'BIO-118'}</span>
-                        <span>·</span>
-                        <span>due {task.due_date ? new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) : 'Sep 02'}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{task.subject_code || task.subject_name || 'COURSE'}</span>
+                        {task.due_date && (
+                          <>
+                            <span>·</span>
+                            <span>due {new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: '2-digit' })}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexShrink: 0 }}>
                     {isHighPriority && !isChecked && (
                       <span style={{
                         fontFamily: 'var(--font-mono)',
@@ -450,7 +443,7 @@ export const Tasks: React.FC = () => {
             <form onSubmit={handleAddTask} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', marginTop: '1rem' }}>
               <input
                 type="text"
-                placeholder="Wayfinding prototype v3..."
+                placeholder="Task title..."
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 style={{
@@ -466,26 +459,33 @@ export const Tasks: React.FC = () => {
                 required
               />
 
-              <select
-                value={selectedSubjectId}
-                onChange={e => setSelectedSubjectId(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.6rem 0.8rem',
-                  borderRadius: '4px',
-                  border: '1px solid var(--line)',
-                  background: 'rgba(250, 246, 240, 0.3)',
-                  fontSize: '0.82rem',
-                  color: 'var(--ink)',
-                  outline: 'none'
-                }}
-              >
-                {displaySubjects.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.code} — {s.name}
-                  </option>
-                ))}
-              </select>
+              {subjects.length > 0 ? (
+                <select
+                  value={selectedSubjectId}
+                  onChange={e => setSelectedSubjectId(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.8rem',
+                    borderRadius: '4px',
+                    border: '1px solid var(--line)',
+                    background: 'rgba(250, 246, 240, 0.3)',
+                    fontSize: '0.82rem',
+                    color: 'var(--ink)',
+                    outline: 'none'
+                  }}
+                  required
+                >
+                  {subjects.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.code} — {s.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div style={{ fontSize: '0.74rem', color: 'var(--ink-faint)', fontStyle: 'italic' }}>
+                  Please add a module in Timetable first.
+                </div>
+              )}
 
               <input
                 type="date"
@@ -505,7 +505,7 @@ export const Tasks: React.FC = () => {
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || subjects.length === 0}
                 style={{
                   width: '100%',
                   padding: '0.65rem',
@@ -517,12 +517,13 @@ export const Tasks: React.FC = () => {
                   fontSize: '0.75rem',
                   fontWeight: 700,
                   letterSpacing: '0.08em',
-                  cursor: 'pointer',
+                  cursor: subjects.length === 0 ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '0.4rem',
-                  marginTop: '0.3rem'
+                  marginTop: '0.3rem',
+                  opacity: subjects.length === 0 ? 0.6 : 1
                 }}
               >
                 <Sparkles size={13} style={{ color: '#f472b6' }} />
@@ -540,7 +541,7 @@ export const Tasks: React.FC = () => {
             boxShadow: '0 1px 3px rgba(45, 21, 39, 0.04)'
           }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-faint)' }}>
-              THIS WEEK
+              DELIVERABLES STATS
             </span>
 
             <div style={{
