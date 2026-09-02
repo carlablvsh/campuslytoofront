@@ -105,7 +105,7 @@ export const Attendance: React.FC = () => {
 
   const handleMarkAttendance = async (subjectId: string, status: 'present' | 'absent' | 'cancelled') => {
     try {
-      const res = await fetch(`${API_BASE_URL}/academic/attendance/log`, {
+      const res = await fetch(`${API_BASE_URL}/academic/attendance`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +119,8 @@ export const Attendance: React.FC = () => {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to mark attendance.');
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to mark attendance.');
       }
       fetchStats();
     } catch (err: any) {
